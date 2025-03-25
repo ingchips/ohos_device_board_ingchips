@@ -1,0 +1,46 @@
+import("//kernel/liteos_m/liteos.gni")
+
+module_name = get_path_info(rebase_path("."), "name")
+kernel_module(module_name) {
+    sources = [
+        "startup_ing91600.s",
+    ]
+}
+
+config("public") {
+    lib_dirs =["$root_out_dir/libs" ]
+    print("lib_dir are: ${lib_dirs}")
+    ldflags = [
+        "-Wl,-T" + rebase_path("ing916.ld"),
+        "-Wl,--whole-archive",
+        "-ldevattest_sdk",
+        "-ldevattest_core",
+        "-lcjson_static",  
+        "-lhal_token_static",
+       # "-lbootstrap",
+       # "-lbroadcast",
+       # "-lhctest",
+       "-lhal_sysparam",
+       #"-lmodule_ActsBootstrapTest",#成功
+       #"-lmodule_ActsWifiIotTest",#成功，文档中没做要求
+       #"-lmodule_ActsParameterTest",#成功 
+
+       #part2
+       #"-lmodule_ActsSamgrTest",#分3部分，全部通过
+
+       #part3
+       #"-lhuks_test_common",#HarmonyOS Universal KeyStore pass
+       #"-lmodule_ActsHuksHalFunctionTest",#pass
+       #"-lmodule_ActsDfxFuncTest",#成功
+
+       #part 4       
+       #"-lmodule_ActsUpdaterFuncTest",#成功
+       #"-lmodule_ActsHieventLiteTest",#成功
+
+       #part 5
+       #"-lmodule_ActsUtilsFileTest",   
+
+        "-Wl,--no-whole-archive",
+        ]
+    
+}

@@ -1,0 +1,90 @@
+# Copyright INGCHIPS Co., Ltd. All rights reserved.
+
+# Kernel type, e.g. "linux", "liteos_a", "liteos_m".
+kernel_type = "liteos_m"
+
+# Kernel version.
+kernel_version = "3.0.0"
+
+board_toolchain_type = "gcc"
+
+storage_type = ""
+
+# The toolchain path installed, it's not mandatory if you have added toolchain path to your ~/.bashrc.
+board_toolchain_path = ""
+
+# Toolchain name used for system compiling.
+# E.g. gcc-arm-none-eabi, arm-linux-harmonyeabi-gcc, ohos-clang,  riscv32-unknown-elf.
+# Note: The default toolchain is "ohos-clang". It's not mandatory if you use the default toolchain.
+board_toolchain = "gcc-arm-none-eabi"
+
+# Board CPU type, e.g. "cortex-a7", "riscv32".
+board_cpu = "cortex-m3"
+
+# Board arch, e.g.  "armv7-a", "rv32imac".
+board_arch = ""
+
+# Compiler prefix.
+board_toolchain_prefix = "arm-none-eabi-"
+
+use_board_toolchain = true
+
+#Debug compiler optimization level options
+board_opt_flags = [
+    "-mcpu=cortex-m3",
+    "-mthumb",
+    "-mfloat-abi=soft",
+    #"-mfloat-abi=hard",
+    "-mfpu=fpv4-sp-d16",
+    #"-g",
+
+]
+
+# Board related common compile flags.
+board_cflags = [ 
+    #"-g",
+    "-Os",
+    "-DLOSCFG_BASE_CORE_HILOG=1",
+    "-Wall",
+    "-fdata-sections",
+    "-ffunction-sections",
+    "-Wunused-function",
+    "-Wunused-variable",
+  
+]
+board_cflags += board_opt_flags
+
+board_asmflags = [
+    #"-g",
+    "-Os",
+    "-Wall",
+    "-fdata-sections",
+    "-ffunction-sections",
+]
+board_asmflags += board_opt_flags
+
+board_cxx_flags = board_cflags
+
+board_ld_flags  = [
+     #"-Wl,--wrap=calloc",
+     #"-Wl,--wrap=free",
+     #"-Wl,--wrap=malloc",
+     
+     #"-Wl,--wrap=_rrmalloc_r",
+     #"-Wl,--wrap=_realloc_r",
+     #"-Wl,--wrap=_reallocf_r",
+     #-Wl,--wrap=_rrfree_r",
+     #"-Wl,--wrap=_memalign_r",
+     #"-Wl,--wrap=_malloc_usable_size_r",
+]
+
+
+# Board related headfiles search path.
+board_include_dirs = [ 
+    "{ohos_root_path}device/soc",
+    "//commonlibrary/utils_lite/include",
+    "//kernel/liteos_m/components/exchook/",
+     ]
+
+# Board adapter dir for OHOS components.
+board_adapter_dir = ""

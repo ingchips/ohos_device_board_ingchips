@@ -1,0 +1,10 @@
+{
+  "parts": {
+    "device_ing916": {
+      "module_list": [
+        "//device/soc/ingchips:ingchips"
+      ]
+    }
+  },
+  "subsystem": "device_ing916"
+}
