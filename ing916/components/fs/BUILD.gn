@@ -18,7 +18,7 @@ config("public") {
 }
 
 hdf_driver("fs_adapter") {
-if (defined(LOSCFG_FS_LITTLEFS){
+if (defined(LOSCFG_FS_LITTLEFS)) {
   sources = [ "fs_init.c" ]
   }
 }

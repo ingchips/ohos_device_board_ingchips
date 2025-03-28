@@ -1,4 +1,4 @@
-# Copyright INGCHIPS Technologies Co., Ltd. All rights reserved.
+# Copyright (C) 2020 Hisilicon (Shanghai) Technologies Co., Ltd. All rights reserved.
 
 # Kernel type, e.g. "linux", "liteos_a", "liteos_m".
 kernel_type = "liteos_m"

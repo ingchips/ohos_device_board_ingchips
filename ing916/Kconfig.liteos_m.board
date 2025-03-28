@@ -11,10 +11,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-choice
-    prompt "ingchips ing916 series SoC"
-    depends on SOC_SERIES_ING916
-
-config SOC_ING916
-    bool "SoC ing916"
-endchoice
+menuconfig BOARD_ING916
+         bool "select board ing916"
+         depends on SOC_ING916

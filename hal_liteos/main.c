@@ -5,7 +5,9 @@
 #include "platform_api.h"
 #include "port_gen_os_driver.h"
 #include "target_config.h"
+#if TARCE_ENABLE
 #include "trace.h"
+#endif
 #if (INGCHIPS_FAMILY == INGCHIPS_FAMILY_916)
 #include "../data/setup_soc916.cgen"
 #endif
@@ -52,14 +54,14 @@ uint32_t cb_putc(char *c, void *dummy)
     return 0;
 }
 
-int _write(int fd, char *ptr, int len)
-{
-    int i;
-    for (i = 0; i < len; i++)
-        cb_putc(ptr + i, NULL);
+// int _write(int fd, char *ptr, int len)
+// {
+//     int i;
+//     for (i = 0; i < len; i++)
+//         cb_putc(ptr + i, NULL);
 
-    return len;
-}
+//     return len;
+// }
 
 void setup_peripherals(void)
 {
@@ -96,8 +98,9 @@ uint32_t query_deep_sleep_allowed(void *dummy, void *user_data)
     return 0;//PLATFORM_ALLOW_DEEP_SLEEP;
     // TODO: return 0 if deep sleep is not allowed now; else deep sleep is allowed
 }
-
+#if TARCE_ENABLE
 trace_rtt_t trace_rtt ;
+#endif
 
 static const platform_evt_cb_table_t evt_cb_table =
 {
@@ -126,10 +129,13 @@ static const platform_evt_cb_table_t evt_cb_table =
         [PLATFORM_CB_EVT_PUTC] = {
             .f = (f_platform_evt_cb)cb_putc,
         },
+        #if TARCE_ENABLE
         [PLATFORM_CB_EVT_TRACE] = {
             .f = (f_platform_evt_cb)cb_trace_rtt,
             .user_data = &cb_trace_rtt,
         },
+        #endif
+        
     }
 };
 

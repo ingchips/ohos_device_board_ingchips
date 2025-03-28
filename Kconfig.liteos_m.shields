@@ -11,4 +11,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-rsource "*/Kconfig.liteos_m.defconfig.series"
+ orsource "shields/Kconfig.liteos_m.shields"

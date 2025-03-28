@@ -13,29 +13,29 @@ config("public") {
     ldflags = [
         "-Wl,-T" + rebase_path("ing916.ld"),
         "-Wl,--whole-archive",
-        "-ldevattest_sdk",
-        "-ldevattest_core",
-        "-lcjson_static",  
-        "-lhal_token_static",
+        # "-ldevattest_sdk",
+        # "-ldevattest_core",
+        # "-lcjson_static",  
+        # "-lhal_token_static",
        # "-lbootstrap",
        # "-lbroadcast",
        # "-lhctest",
-       "-lhal_sysparam",
-       #"-lmodule_ActsBootstrapTest",#³É¹¦
-       #"-lmodule_ActsWifiIotTest",#³É¹¦£¬ÎÄµµÖĞÃ»×öÒªÇó
-       #"-lmodule_ActsParameterTest",#³É¹¦ 
+    #    "-lhal_sysparam",
+       #"-lmodule_ActsBootstrapTest",#æˆåŠŸ
+       #"-lmodule_ActsWifiIotTest",#æˆåŠŸï¼Œæ–‡æ¡£ä¸­æ²¡åšè¦æ±‚
+       #"-lmodule_ActsParameterTest",#æˆåŠŸ 
 
        #part2
-       #"-lmodule_ActsSamgrTest",#·Ö3²¿·Ö£¬È«²¿Í¨¹ı
+       #"-lmodule_ActsSamgrTest",#åˆ†3éƒ¨åˆ†ï¼Œå…¨éƒ¨é€šè¿‡
 
        #part3
        #"-lhuks_test_common",#HarmonyOS Universal KeyStore pass
        #"-lmodule_ActsHuksHalFunctionTest",#pass
-       #"-lmodule_ActsDfxFuncTest",#³É¹¦
+       #"-lmodule_ActsDfxFuncTest",#æˆåŠŸ
 
        #part 4       
-       #"-lmodule_ActsUpdaterFuncTest",#³É¹¦
-       #"-lmodule_ActsHieventLiteTest",#³É¹¦
+       #"-lmodule_ActsUpdaterFuncTest",#æˆåŠŸ
+       #"-lmodule_ActsHieventLiteTest",#æˆåŠŸ
 
        #part 5
        #"-lmodule_ActsUtilsFileTest",   

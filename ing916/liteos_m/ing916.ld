@@ -8,9 +8,9 @@
 MEMORY
 {
   FLASH (rx) : ORIGIN = 0x02027000, LENGTH = 364544
-   DRAM (rwx) : ORIGIN = 0x200043E8, LENGTH = 0x9C18
-  RAM (rwx) : ORIGIN = 0x2000E000, LENGTH = 0x4000
-  RAM2 (rwx) : ORIGIN = 0x20004000, LENGTH = 0x3E0
+   DRAM (rwx) : ORIGIN = 0x200043E4, LENGTH = 0x100
+  RAM (rwx) : ORIGIN = 0x200053e4 LENGTH = 0x2c1c
+  RAM2 (rwx) : ORIGIN = 0x2000E000, LENGTH = 0x2000
 }
 
 /* Linker script to place sections and symbol values. Should be used together
@@ -257,12 +257,12 @@ SECTIONS
 		__data_end__ = .;
 
 	} > RAM
-
-	.osheap :
+	.data2 :
 	{
-	  __los_heap_addr_start__ = .;
-	  __los_heap_addr_end__ = ORIGIN(DRAM) + LENGTH(DRAM) -1;
-	} > DRAM
+		__los_heap_addr_start__ = .;
+		__los_heap_addr_end__ = ORIGIN(RAM2) + LENGTH(RAM2) -1;
+		. = ALIGN(4);
+	} > RAM2
 
 	.bss2 :
 	{
@@ -271,7 +271,7 @@ SECTIONS
 		*(*.g_devFd*)
 		. = ALIGN(4);
 		__bss2_end__ = .;
-	} > RAM2
+	} > RAM
 	
 	.bss :
 	{

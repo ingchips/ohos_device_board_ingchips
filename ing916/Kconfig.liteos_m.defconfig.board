@@ -11,7 +11,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-config SOC
-    string
-    default "ing916"
-    depends on SOC_ING916
+if BOARD_ING916
+
+config GLOBAL_ING916_BOARD
+        bool "Enable global macro"
+        default y
+        help
+          This option allows you to enable a global macro in the build.
+
+endif #BOARD_ING916

@@ -271,14 +271,14 @@ STATIC LosPmDevice gs_PmDeviceSt = {
 #include "hiview_log.h"
 #include "los_debug.h"
 #define LOG_FMT_MAX_LEN 256
-boolean HilogProc_Impl(const HiLogContent *hilogContent, uint32 len)
-{
-    char tempOutStr[LOG_FMT_MAX_LEN] = {0};
-    if (LogContentFmt(tempOutStr, sizeof(tempOutStr), hilogContent) > 0) {
-        printf(tempOutStr);
-    }
-    return TRUE;
-}
+// boolean HilogProc_Impl(const HiLogContent *hilogContent, uint32 len)
+// {
+//     char tempOutStr[LOG_FMT_MAX_LEN] = {0};
+//     if (LogContentFmt(tempOutStr, sizeof(tempOutStr), hilogContent) > 0) {
+//         printf(tempOutStr);
+//     }
+//     return TRUE;
+// }
 //extern char __HeapBase, __HeapLimit;
 
 void mainTask(void) {
@@ -288,12 +288,11 @@ void mainTask(void) {
 //	printf("Heap range: 0x%p - 0x%p\n", &__HeapBase, &__HeapLimit);
 	//printf("$$$$$$$$$$$$$$malloc(1) = %p\r\n", ptr);
 #ifdef LOSCFG_DRIVERS_HDF_STORAGE
-sd
 	DeviceManagerStart();
 #endif
     OHOS_SystemInit();
     /* register hilog output func for mini */
-    HiviewRegisterHilogProc(HilogProc_Impl);
+    // HiviewRegisterHilogProc(HilogProc_Impl);
 //    while(1)
 //    {
 //        osDelay(1000);
@@ -326,7 +325,7 @@ const gen_os_driver_t *os_impl_get_driver(void)
     LOS_KernelInit();	
     OsSysTickTimerInit(LOSCFG_BASE_CORE_TICK_RESPONSE_MAX);
     //RunTaskSample();
-    MainTaskInit();
+    // MainTaskInit();
     //OHOS_SystemInit();
 #ifdef LOSCFG_KERNEL_LOWPOWER
     LOS_PmRegister(LOS_PM_TYPE_TICK_TIMER, &gs_PmTickSt);
