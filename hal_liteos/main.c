@@ -54,14 +54,14 @@ uint32_t cb_putc(char *c, void *dummy)
     return 0;
 }
 
-// int _write(int fd, char *ptr, int len)
-// {
-//     int i;
-//     for (i = 0; i < len; i++)
-//         cb_putc(ptr + i, NULL);
+int _write(int fd, char *ptr, int len)
+{
+    int i;
+    for (i = 0; i < len; i++)
+        cb_putc(ptr + i, NULL);
 
-//     return len;
-// }
+    return len;
+}
 
 void setup_peripherals(void)
 {

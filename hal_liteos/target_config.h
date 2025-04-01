@@ -68,7 +68,7 @@ extern "C" {
                                        Task module configuration
 =============================================================================*/
 #define LOSCFG_BASE_CORE_TSK_LIMIT                          16
-#define LOSCFG_BASE_CORE_TSK_DEFAULT_STACK_SIZE             0x2D0U
+#define LOSCFG_BASE_CORE_TSK_DEFAULT_STACK_SIZE             0x400U
 #define LOSCFG_BASE_CORE_TSK_MIN_STACK_SIZE                 0x130U
 #define LOSCF
 
@@ -76,33 +76,33 @@ extern "C" {
 #define LOSCFG_BASE_CORE_TSK_IDLE_STACK_SIZE                (0x400U)
 #define LOSCFG_BASE_CORE_TIMESLICE                          1
 #define LOSCFG_BASE_CORE_TIMESLICE_TIMEOUT                  1000
-//#define LOSCFG_SYS_HEAP_SIZE                                0x9e50//0x9e50
+
 /*=============================================================================
                                        Semaphore module configuration
 =============================================================================*/
 #define LOSCFG_BASE_IPC_SEM                                 1
-#define LOSCFG_BASE_IPC_SEM_LIMIT                           48
+#define LOSCFG_BASE_IPC_SEM_LIMIT                           20
 /*=============================================================================
                                        Mutex module configuration
 =============================================================================*/
 #define LOSCFG_BASE_IPC_MUX                                 1
-#define LOSCFG_BASE_IPC_MUX_LIMIT                           80
+#define LOSCFG_BASE_IPC_MUX_LIMIT                           20
 /*=============================================================================
                                        Queue module configuration
 =============================================================================*/
 #define LOSCFG_BASE_IPC_QUEUE                               1
-#define LOSCFG_BASE_IPC_QUEUE_LIMIT                         48
+#define LOSCFG_BASE_IPC_QUEUE_LIMIT                         20
 /*=============================================================================
                                        Software timer module configuration
 =============================================================================*/
 #define LOSCFG_BASE_CORE_SWTMR                              1
 #define LOSCFG_BASE_CORE_SWTMR_ALIGN                        0
-#define LOSCFG_BASE_CORE_SWTMR_LIMIT                        48
+#define LOSCFG_BASE_CORE_SWTMR_LIMIT                        20
 /*=============================================================================
                                        Memory module configuration
 =============================================================================*/
 #define LOSCFG_MEM_MUL_POOL                                 0
-#define OS_SYS_MEM_NUM                                      40
+#define OS_SYS_MEM_NUM                                      20
 /*=============================================================================
                                        Exception module configuration
 =============================================================================*/
@@ -118,10 +118,14 @@ extern "C" {
 extern unsigned char __los_heap_addr_start__[];
 extern unsigned char __los_heap_addr_end__[];
 #define LOSCFG_SYS_EXTERNAL_HEAP                            1
+#if LOSCFG_SYS_EXTERNAL_HEAP
 #define LOSCFG_SYS_HEAP_ADDR                                ((void *)__los_heap_addr_start__)
 #define LOSCFG_SYS_HEAP_SIZE    (((unsigned long)__los_heap_addr_end__) - \
                                  ((unsigned long)__los_heap_addr_start__) + 1)
 #define OS_TASK_STACK_ADDR                                  (&m_aucSysMem0[0])
+#else
+#define LOSCFG_SYS_HEAP_SIZE                                0x5000//0x9e50
+#endif
 
 
 /**

@@ -271,33 +271,30 @@ STATIC LosPmDevice gs_PmDeviceSt = {
 #include "hiview_log.h"
 #include "los_debug.h"
 #define LOG_FMT_MAX_LEN 256
-// boolean HilogProc_Impl(const HiLogContent *hilogContent, uint32 len)
-// {
-//     char tempOutStr[LOG_FMT_MAX_LEN] = {0};
-//     if (LogContentFmt(tempOutStr, sizeof(tempOutStr), hilogContent) > 0) {
-//         printf(tempOutStr);
-//     }
-//     return TRUE;
-// }
-//extern char __HeapBase, __HeapLimit;
+boolean HilogProc_Impl(const HiLogContent *hilogContent, uint32 len)
+{
+    char tempOutStr[LOG_FMT_MAX_LEN] = {0};
+    if (LogContentFmt(tempOutStr, sizeof(tempOutStr), hilogContent) > 0) {
+        printf(tempOutStr);
+    }
+    return TRUE;
+}
+extern char __HeapBase, __HeapLimit;
 
 void mainTask(void) {
     // Avoiding HCTEST being called before real LiteParamService
-   // LiteParamService();
-   //	void *ptr = malloc(1);
-//	printf("Heap range: 0x%p - 0x%p\n", &__HeapBase, &__HeapLimit);
-	//printf("$$$$$$$$$$$$$$malloc(1) = %p\r\n", ptr);
+   LiteParamService();
 #ifdef LOSCFG_DRIVERS_HDF_STORAGE
 	DeviceManagerStart();
 #endif
     OHOS_SystemInit();
     /* register hilog output func for mini */
-    // HiviewRegisterHilogProc(HilogProc_Impl);
-//    while(1)
-//    {
-//        osDelay(1000);
-//        printf("t\r\n");
-//    }
+    HiviewRegisterHilogProc(HilogProc_Impl);
+   while(1)
+   {
+       osDelay(1000);
+       printf("t\r\n");
+   }
     return NULL;
 }
 UINT32 tid;
@@ -324,9 +321,9 @@ const gen_os_driver_t *os_impl_get_driver(void)
     //LOS_KernelInit initializes the NVIC Settings. we don't want to do that.
     LOS_KernelInit();	
     OsSysTickTimerInit(LOSCFG_BASE_CORE_TICK_RESPONSE_MAX);
-    //RunTaskSample();
-    // MainTaskInit();
-    //OHOS_SystemInit();
+    // RunTaskSample();
+    MainTaskInit();
+    // OHOS_SystemInit();
 #ifdef LOSCFG_KERNEL_LOWPOWER
     LOS_PmRegister(LOS_PM_TYPE_TICK_TIMER, &gs_PmTickSt);
     LOS_PmRegister(LOS_PM_TYPE_SYSCTRL, &gs_PmSysctrlSt);

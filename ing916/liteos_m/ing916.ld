@@ -4,12 +4,13 @@
  *   FLASH.LENGTH: length of flash
  *   RAM.ORIGIN: starting address of RAM bank 0
  *   RAM.LENGTH: length of RAM bank 0
+DRAM (rwx) : ORIGIN = 0x200043E4, LENGTH = 0x5000
  */
 MEMORY
 {
   FLASH (rx) : ORIGIN = 0x02027000, LENGTH = 364544
-   DRAM (rwx) : ORIGIN = 0x200043E4, LENGTH = 0x100
-  RAM (rwx) : ORIGIN = 0x200053e4 LENGTH = 0x2c1c
+  DRAM (rwx) : ORIGIN = 0x200043E4,  LENGTH = 0x5000
+  RAM (rwx) : ORIGIN = 0x200093E4,  LENGTH = 0x4c1c
   RAM2 (rwx) : ORIGIN = 0x2000E000, LENGTH = 0x2000
 }
 
@@ -256,13 +257,13 @@ SECTIONS
 		/* All data end */
 		__data_end__ = .;
 
-	} > RAM
-	.data2 :
+	} > RAM2
+	.los_heap :
 	{
 		__los_heap_addr_start__ = .;
-		__los_heap_addr_end__ = ORIGIN(RAM2) + LENGTH(RAM2) -1;
+		__los_heap_addr_end__ = ORIGIN(DRAM) + LENGTH(DRAM) -1;
 		. = ALIGN(4);
-	} > RAM2
+	} > DRAM
 
 	.bss2 :
 	{

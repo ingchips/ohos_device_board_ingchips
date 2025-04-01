@@ -8,39 +8,77 @@ kernel_module(module_name) {
 }
 
 config("public") {
+    cflags  = []
     lib_dirs =["$root_out_dir/libs" ]
     print("lib_dir are: ${lib_dirs}")
+    test_step = "part2" #修改这个值来选择编译不同的测试部分
+    
     ldflags = [
         "-Wl,-T" + rebase_path("ing916.ld"),
         "-Wl,--whole-archive",
-        # "-ldevattest_sdk",
-        # "-ldevattest_core",
-        # "-lcjson_static",  
-        # "-lhal_token_static",
-       # "-lbootstrap",
-       # "-lbroadcast",
-       # "-lhctest",
-    #    "-lhal_sysparam",
-       #"-lmodule_ActsBootstrapTest",#成功
-       #"-lmodule_ActsWifiIotTest",#成功，文档中没做要求
-       #"-lmodule_ActsParameterTest",#成功 
+        "-lbootstrap",
+        "-lbroadcast",
+        "-lhctest",
+       # "-lapp_hello",
+       ]
+       
+    #xtspart1
+    if (test_step == "part1") {
+    ldflags += [
+        "-ldevattest_sdk",
+        "-ldevattest_core",
+        "-lcjson_static",  
+        "-lhal_token_static",
+       "-lhal_sysparam",
+       "-lmodule_ActsBootstrapTest",#成功
+       "-lmodule_ActsParameterTest",#成功 
+    ]
+    }       
 
-       #part2
-       #"-lmodule_ActsSamgrTest",#分3部分，全部通过
+    #xtspart2
+    #test\xts\acts\distributed_schedule_lite\system_ability_manager_hal\BUILD.gn
+    #修改此文件，一次编译部分c文件
+    else if (test_step == "part2") {
+    cflags += [
+    "-UINTER_ATTEST_MINI_MODULE",
+    ]
+    ldflags += [
+       "-lmodule_ActsSamgrTest",
+      ]
+    }
+     
+    #xtspart3 flash不够，分成多部分：make menuconfig在kernel中开文件系统及flash驱动
+    #test\xts\acts\security_lite\huks\liteos_m_adapter\BUILD.gn
+    else if (test_step == "part3"){
+    cflags += ["-UINTER_ATTEST_MINI_MODULE"]
+    ldflags += [
+       "-lhuks_test_common",#pass
+       "-lmodule_ActsHuksHalFunctionTest",#pass
+    ]
+    }
 
-       #part3
-       #"-lhuks_test_common",#HarmonyOS Universal KeyStore pass
-       #"-lmodule_ActsHuksHalFunctionTest",#pass
-       #"-lmodule_ActsDfxFuncTest",#成功
-
-       #part 4       
-       #"-lmodule_ActsUpdaterFuncTest",#成功
-       #"-lmodule_ActsHieventLiteTest",#成功
-
-       #part 5
-       #"-lmodule_ActsUtilsFileTest",   
-
-        "-Wl,--no-whole-archive",
-        ]
     
+    ####xtspart4       
+    else if (test_step == "part4"){
+    cflags += ["-UINTER_ATTEST_MINI_MODULE"]
+    ldflags += [
+       "-lmodule_ActsDfxFuncTest",#成功
+       "-lmodule_ActsUpdaterFuncTest",#成功
+       "-lmodule_ActsHieventLiteTest",#成功
+       ]
+    }
+
+       
+    ####xtspart5 make menuconfig在kernel中开文件系统及flash驱动
+    else if (test_step == "part5") {
+    cflags += ["-UINTER_ATTEST_MINI_MODULE"]
+    ldflags += [
+       "-lmodule_ActsUtilsFileTest",#外挂flash成功
+    ]
+    }
+
+    ldflags += [
+            "-Wl,--no-whole-archive",
+    ]
+print("ldflags are:${ldflags}")    
 }
