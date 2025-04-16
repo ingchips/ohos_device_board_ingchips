@@ -25,13 +25,13 @@ config("public") {
     #xtspart1
     if (test_step == "part1") {
     ldflags += [
-        "-ldevattest_sdk",
-        "-ldevattest_core",
-        "-lcjson_static",  
-        "-lhal_token_static",
+        #"-ldevattest_sdk",
+        #"-ldevattest_core",
+        #"-lcjson_static",  
+        #"-lhal_token_static",
        "-lhal_sysparam",
        "-lmodule_ActsBootstrapTest",#成功
-       "-lmodule_ActsParameterTest",#成功 
+       #"-lmodule_ActsParameterTest",#成功 
     ]
     }       
 
