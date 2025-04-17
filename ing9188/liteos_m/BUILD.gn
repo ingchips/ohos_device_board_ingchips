@@ -5,14 +5,16 @@ kernel_module(module_name) {
     sources = [
         "startup_ing91800.s",
     ]
+   deps = ["//test/xts/acts/commonlibrary_lite/file_hal:ActsUtilsFileTest"]
 }
 
 config("public") {
     cflags  = []
     lib_dirs =["$root_out_dir/libs" ]
     print("lib_dir are: ${lib_dirs}")
-    test_step = "part1" #修改这个值来选择编译不同的测试部分
-    
+    test_step = "part3" #修改这个值来选择编译不同的测试部分
+
+
     ldflags = [
         "-Wl,-T" + rebase_path("ing9188.ld"),
         "-Wl,--whole-archive",
@@ -25,13 +27,14 @@ config("public") {
     #xtspart1
     if (test_step == "part1") {
     ldflags += [
-        #"-ldevattest_sdk",
-        #"-ldevattest_core",
-        #"-lcjson_static",  
-        #"-lhal_token_static",
-       "-lhal_sysparam",
-       "-lmodule_ActsBootstrapTest",#成功
-       #"-lmodule_ActsParameterTest",#成功 
+      #"-ldevattest_sdk",
+      #"-ldevattest_core",
+      #"-lcjson_static",  
+      #"-lhal_token_static",
+      #"-lhal_sysparam",
+      #"-lmodule_ActsBootstrapTest",#成功
+      #"-lmodule_ActsParameterTest",#成功 
+      "-lmodule_ActsUtilsFileTest",
     ]
     }       
 
