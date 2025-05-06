@@ -20,7 +20,6 @@ kernel_module(module_name) {
     sources = [
         "gen_os_impl.c", 
         "main.c",
-        "profile.c",
         "task_sample.c",
     ]
 

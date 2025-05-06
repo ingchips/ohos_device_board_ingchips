@@ -1,9 +1,3 @@
-void cube_soc_init(void)
-{
-platform_config(PLATFORM_CFG_RT_OSC_EN, PLATFORM_CFG_DISABLE);
-platform_config(PLATFORM_CFG_RT_CLK_ACC, 500);
-
-}
 
 void cube_setup_peripherals(void)
 {
@@ -20,8 +14,8 @@ SYSCTRL_ClearClkGateMulti((1 << SYSCTRL_ITEM_APB_PinCtrl)
     APB_UART0->IntClear = 0;
     APB_UART0->IntMask = 0;
     APB_UART0->StatusClear = 0;
-    APB_UART0->IntBaudDivisor = 13;
-    APB_UART0->FractBaudDivisor = 1;
+    APB_UART0->IntBaudDivisor = 3;
+    APB_UART0->FractBaudDivisor = 16;
     APB_UART0->LineCon_H = ( ((UART_PARITY_NOT_CHECK >> 2) & 1) << bsUART_STICK_PARITY ) |  // SPS
                         (   3      << bsUART_WORD_LENGTH  ) |  // WLEN
                         (   1      << bsUART_FIFO_ENABLE  ) |  // FEN

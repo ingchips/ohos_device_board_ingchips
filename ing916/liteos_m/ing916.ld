@@ -4,14 +4,12 @@
  *   FLASH.LENGTH: length of flash
  *   RAM.ORIGIN: starting address of RAM bank 0
  *   RAM.LENGTH: length of RAM bank 0
-DRAM (rwx) : ORIGIN = 0x200043E4, LENGTH = 0x5000
  */
 MEMORY
 {
-  FLASH (rx) : ORIGIN = 0x02027000, LENGTH = 364544
-  DRAM (rwx) : ORIGIN = 0x200043E4,  LENGTH = 0x5000
-  RAM (rwx) : ORIGIN = 0x200093E4,  LENGTH = 0x4c1c
-  RAM2 (rwx) : ORIGIN = 0x2000E000, LENGTH = 0x2000
+  FLASH (rx) : ORIGIN = 0x02002000, LENGTH = 0x200000
+  RAM (rwx)  : ORIGIN = 0x20000000, LENGTH = 0x91f7
+  RAM2 (rwx) : ORIGIN = 0x200091f8, LENGTH = 0x8e00
 }
 
 /* Linker script to place sections and symbol values. Should be used together
@@ -53,7 +51,6 @@ SECTIONS
 		KEEP(*(.isr_vector))
 		*(.text*)
 		. = ALIGN(4);
-		. = ALIGN(4);
 	   __zinitcall_bsp_start = .;
 	  KEEP (*(.zinitcall.bsp0.init))
 	  KEEP (*(.zinitcall.bsp1.init))
@@ -62,7 +59,6 @@ SECTIONS
 	  KEEP (*(.zinitcall.bsp4.init))
 	  __zinitcall_bsp_end = .;
 	  	. = ALIGN(4);
-		. = ALIGN(4);
 	  __zinitcall_device_start = .;
 	  KEEP (*(.zinitcall.device0.init))
 	  KEEP (*(.zinitcall.device1.init))
@@ -71,7 +67,6 @@ SECTIONS
 	  KEEP (*(.zinitcall.device4.init))
 	  __zinitcall_device_end = .;
 	  	. = ALIGN(4);
-		. = ALIGN(4);
 	  __zinitcall_core_start = .;
 	  KEEP (*(.zinitcall.core0.init))
 	  KEEP (*(.zinitcall.core1.init))
@@ -80,7 +75,6 @@ SECTIONS
 	  KEEP (*(.zinitcall.core4.init))
 	  __zinitcall_core_end = .;
 	  	. = ALIGN(4);
-		. = ALIGN(4);
 	  __zinitcall_sys_service_start = .;
 	  KEEP (*(.zinitcall.sys.service0.init))
 	  KEEP (*(.zinitcall.sys.service1.init))
@@ -89,7 +83,6 @@ SECTIONS
 	  KEEP (*(.zinitcall.sys.service4.init))
 	  __zinitcall_sys_service_end = .;
 	  	. = ALIGN(4);
-		. = ALIGN(4);
 	  __zinitcall_sys_feature_start = .;
 	  KEEP (*(.zinitcall.sys.feature0.init))
 	  KEEP (*(.zinitcall.sys.feature1.init))
@@ -97,7 +90,6 @@ SECTIONS
 	  KEEP (*(.zinitcall.sys.feature3.init))
 	  KEEP (*(.zinitcall.sys.feature4.init))
 	  __zinitcall_sys_feature_end = .;
-	  	. = ALIGN(4);
 		. = ALIGN(4);
 	  __zinitcall_run_start = .;
 	  KEEP (*(.zinitcall.run0.init))
@@ -107,7 +99,6 @@ SECTIONS
 	  KEEP (*(.zinitcall.run4.init))
 	  __zinitcall_run_end = .;
 	  	. = ALIGN(4);
-		. = ALIGN(4);
 	  __zinitcall_app_service_start = .;
 	  KEEP (*(.zinitcall.app.service0.init))
 	  KEEP (*(.zinitcall.app.service1.init))
@@ -115,7 +106,6 @@ SECTIONS
 	  KEEP (*(.zinitcall.app.service3.init))
 	  KEEP (*(.zinitcall.app.service4.init))
 	  __zinitcall_app_service_end = .;
-	  	. = ALIGN(4);
 		. = ALIGN(4);
 	  __zinitcall_app_feature_start = .;
 	  KEEP (*(.zinitcall.app.feature0.init))
@@ -125,7 +115,6 @@ SECTIONS
 	  KEEP (*(.zinitcall.app.feature4.init))
 	  __zinitcall_app_feature_end = .;
 	  	. = ALIGN(4);
-		. = ALIGN(4);
 	  __zinitcall_test_start = .;
 	  KEEP (*(.zinitcall.test0.init))
 	  KEEP (*(.zinitcall.test1.init))
@@ -133,7 +122,6 @@ SECTIONS
 	  KEEP (*(.zinitcall.test3.init))
 	  KEEP (*(.zinitcall.test4.init))
 	  __zinitcall_test_end = .;
-	  	. = ALIGN(4);
 		. = ALIGN(4);
 	  __zinitcall_exit_start = .;
 	  KEEP (*(.zinitcall.exit0.init))
@@ -142,7 +130,6 @@ SECTIONS
 	  KEEP (*(.zinitcall.exit3.init))
 	  KEEP (*(.zinitcall.exit4.init))
 	  __zinitcall_exit_end = .;
-		. = ALIGN(4);
 		. = ALIGN(4);
 		*(.init)
 		*(.fini)
@@ -166,14 +153,14 @@ SECTIONS
 		*(.eh_frame*)
 	} > FLASH
 
+ .hdf_drivers_entry :
+  {
+    _hdf_drivers_start = .;
+    KEEP(*(.hdf.driver))
+    _hdf_drivers_end = .;
+  } >FLASH
 
-	hdf_drivers_entry :
-	{
-		_hdf_drivers_start = .;
-		KEEP(*(.hdf.driver))
-		_hdf_drivers_end = .;
-	} >FLASH
-  
+	
 	.ARM.extab :
 	{
 		*(.ARM.extab* .gnu.linkonce.armextab.*)
@@ -214,8 +201,6 @@ SECTIONS
 		__zero_table_start__ = .;
 		LONG (__bss_start__)
 		LONG (__bss_end__ - __bss_start__)
-		LONG (__bss2_start__)
-		LONG (__bss2_end__ - __bss2_start__)
 		__zero_table_end__ = .;
 	} > FLASH
 	*/
@@ -257,23 +242,14 @@ SECTIONS
 		/* All data end */
 		__data_end__ = .;
 
-	} > RAM2
-	.los_heap :
-	{
-		__los_heap_addr_start__ = .;
-		__los_heap_addr_end__ = ORIGIN(DRAM) + LENGTH(DRAM) -1;
-		. = ALIGN(4);
-	} > DRAM
+	} > RAM
 
 	.bss2 :
 	{
-		. = ALIGN(4);
-		__bss2_start__ = .;
-		*(*.g_devFd*)
-		. = ALIGN(4);
-		__bss2_end__ = .;
-	} > RAM
-	
+	  __los_heap_addr_start__ = .;
+	  __los_heap_addr_end__ = ORIGIN(RAM2) + LENGTH(RAM2) -1;
+	} > RAM2
+
 	.bss :
 	{
 		. = ALIGN(4);

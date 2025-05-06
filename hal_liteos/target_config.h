@@ -46,11 +46,11 @@ extern "C" {
 /*=============================================================================
                                         System clock module configuration
 =============================================================================*/
-#if 0
-#define OS_SYS_CLOCK                                        112000000
+#if 1
+#define OS_SYS_CLOCK                                        112000000UL
 #define LOSCFG_BASE_CORE_TICK_PER_SECOND                    (1000UL)
 #else
-#define OS_SYS_CLOCK                                        RTC_CLK_FREQ
+#define OS_SYS_CLOCK                                        (RTC_CLK_FREQ*1000UL)
 #define LOSCFG_BASE_CORE_TICK_PER_SECOND                    (1000UL)
 #endif
 #define LOSCFG_BASE_CORE_TICK_PER_SECOND_MINI               (1000UL)

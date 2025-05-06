@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <string.h>
+#include "los_debug.h"
 #include "profile.h"
 #include "ingsoc.h"
-#include "platform_api.h"
 #include "port_gen_os_driver.h"
 #include "target_config.h"
 #if TARCE_ENABLE
@@ -15,32 +15,16 @@
 #include "../data/setup_soc918.cgen"
 #endif
 
-static uint32_t cb_hard_fault(hard_fault_info_t *info, void *_)
-{
-    platform_printf("HARDFAULT:\nPC : 0x%08X\nLR : 0x%08X\nPSR: 0x%08X\n"
-                    "R0 : 0x%08X\nR1 : 0x%08X\nR2 : 0x%08X\nP3 : 0x%08X\n"
-                    "R12: 0x%08X\n",
-                    info->pc, info->lr, info->psr,
-                    info->r0, info->r1, info->r2, info->r3, info->r12);
-    for (;;);
-
-    return 0;
+void NVIC_SetVectorTable(int NVIC_VectTab, int Offset)
+{ 
+    /* Check the parameters */ 
+    SCB->VTOR = NVIC_VectTab | (Offset & (int)0xFFFFFF80);
 }
 
-static uint32_t cb_assertion(assertion_info_t *info, void *_)
+uint32_t HardFault_Handler(void)
 {
-    platform_printf("[ASSERTION] @ %s:%d\r\n",
-                    info->file_name,
-                    info->line_no);
+    PRINTK("hard fault\n");
     for (;;);
-    return 0;
-}
-
-static uint32_t cb_heap_out_of_mem(uint32_t tag, void *_)
-{
-    platform_printf("[OOM] @ %d\r\n", tag);
-    for (;;);
-    return 0;
 }
 
 #define TRACE_PORT    APB_UART1
@@ -68,97 +52,71 @@ void setup_peripherals(void)
     cube_setup_peripherals();
 }
 
-uint32_t on_lle_init(void *dummy, void *user_data)
-{
-    (void)(dummy);
-    (void)(user_data);
-    cube_on_lle_init();
-    return 0;
-}
-
-uint32_t on_deep_sleep_wakeup(void *dummy, void *user_data)
-{
-    (void)(dummy);
-    (void)(user_data);
-    setup_peripherals();
-    return 0;
-}
-
 void init_memory(void)
 {
     #if (INGCHIPS_FAMILY == INGCHIPS_FAMILY_916)
-    SYSCTRL_CacheControl(1, 1);//set 
+    SYSCTRL_CacheControl(SYSCTRL_MEM_BLOCK_AS_SYS_MEM, SYSCTRL_MEM_BLOCK_AS_SYS_MEM);//set 
     #endif
 }
 
-uint32_t query_deep_sleep_allowed(void *dummy, void *user_data)
-{
-    (void)(dummy);
-    (void)(user_data);
-    return 0;//PLATFORM_ALLOW_DEEP_SLEEP;
-    // TODO: return 0 if deep sleep is not allowed now; else deep sleep is allowed
-}
+
 #if TARCE_ENABLE
 trace_rtt_t trace_rtt ;
 #endif
 
-static const platform_evt_cb_table_t evt_cb_table =
+#include "soc.h"
+void SysInit(void)
 {
-    .callbacks = {
-        [PLATFORM_CB_EVT_HARD_FAULT] = {
-            .f = (f_platform_evt_cb)cb_hard_fault,
-        },
-        [PLATFORM_CB_EVT_ASSERTION] = {
-            .f = (f_platform_evt_cb)cb_assertion,
-        },
-        [PLATFORM_CB_EVT_HEAP_OOM] = {
-            .f = (f_platform_evt_cb)cb_heap_out_of_mem,
-        },
-        [PLATFORM_CB_EVT_PROFILE_INIT] = {
-            .f = setup_profile,
-        },
-        [PLATFORM_CB_EVT_LLE_INIT] = {
-            .f = on_lle_init,
-        },
-        [PLATFORM_CB_EVT_ON_DEEP_SLEEP_WAKEUP] = {
-            .f = (f_platform_evt_cb)on_deep_sleep_wakeup,
-        },
-        [PLATFORM_CB_EVT_QUERY_DEEP_SLEEP_ALLOWED] = {
-            .f = query_deep_sleep_allowed,
-        },
-        [PLATFORM_CB_EVT_PUTC] = {
-            .f = (f_platform_evt_cb)cb_putc,
-        },
-        #if TARCE_ENABLE
-        [PLATFORM_CB_EVT_TRACE] = {
-            .f = (f_platform_evt_cb)cb_trace_rtt,
-            .user_data = &cb_trace_rtt,
-        },
-        #endif
-        
-    }
-};
+  if(aon2_ctrl_reg->pwr_ctrl_status0.f.boot_power_up == 0x1){
+    aon1_ctrl_reg->aon1_reg3.f.reg_boot_pin_clr = 0x1;
+    aon1_ctrl_reg->aon1_boot.r = ((0x1 << 0 ) | //BootConfig Enable
+                                  (0x1 << 1 ) | //Pll Enable
+                                  (0x1 << 2 ) | //Pll wait time or lock, 0:time, 1:lock
+                                  (0x0 << 3 ) | //pll time, 110us/130us/150us/170us
+                                  (80  << 5 ) | //pll div loop reg
+                                  (0x1 << 13) | //hclk sel
+                                  (4   << 14) | //hclk div denom
+                                  (0x1 << 18) | //flash clk sel
+                                  (2   << 19) | //flash div denom
+                                  (0x1 << 23) | //flash 4line
+                                  (0x2 << 24) | //flash sample delay
+                                  (0x1 << 27) | //cache enable
+                                  (0x0 << 28) | //wdt enable
+                                  (7UL << 29)   //other, must be 0x7
+                                 );
+    NVIC_SystemReset();
+  }
+  
+
+  extern uint32_t __isr_vector;
+  NVIC_SetVectorTable(0x0, (uint32_t)&__isr_vector);
+  
+}
 
 const char welcome_msg[] = "Built with LiteOS (" HW_LITEOS_KERNEL_VERSION_STRING ")";
 // TODO: add RTOS source code to the project.
 extern const gen_os_driver_t *os_impl_get_driver(void);
 uintptr_t app_main()
 {
+    NVIC_SetPriority(SysTick_IRQn, 0);
+    NVIC_DisableIRQ(SysTick_IRQn);
+    SysInit();
+    SYSCTRL_ConfigPLLClk(5, 70, 1);
+    SYSCTRL_SelectHClk(SYSCTRL_CLK_PLL_DIV_3);
     SYSCTRL_Init();
-    cube_soc_init();
 
-    // setup event handlers
-    platform_set_evt_callback_table(&evt_cb_table);
     setup_peripherals();
 	SYSCTRL_SelectMemoryBlocks(0x3FF);//全选
+  
     printf("build@%s\r\n",__TIME__);
     printf("build@%d\r\n",__LINE__);
-
-    //trace_uart_init(&trace_ctx);
-    //TODO: config trace mask
-    platform_config(PLATFORM_CFG_TRACE_MASK, 0);
-    //platform_config(PLATFORM_CFG_POWER_SAVING, PLATFORM_CFG_ENABLE);
     printf("start up\r\n");
 
-    return (uintptr_t)os_impl_get_driver();
+    uint32_t SystemCoreClock = SYSCTRL_GetPLLClk();
+
+    printf("starting up: %u\n", SYSCTRL_GetHClk());
+    // while(1);
+
+    os_impl_get_driver();
+    return 0;
 }
