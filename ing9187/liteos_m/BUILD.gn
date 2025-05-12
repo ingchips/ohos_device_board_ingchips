@@ -5,6 +5,7 @@ kernel_module(module_name) {
     sources = [
         "startup_ing91800.s",
     ]
+   deps = ["//test/xts/acts/commonlibrary_lite/file_hal:ActsUtilsFileTest"]
 }
 
 config("public") {
@@ -16,22 +17,23 @@ config("public") {
     ldflags = [
         "-Wl,-T" + rebase_path("ing9187.ld"),
         "-Wl,--whole-archive",
-        "-lbootstrap",
-        "-lbroadcast",
-        "-lhctest",
-       # "-lapp_hello",
+        #"-lbootstrap",
+        #"-lbroadcast",
+        #"-lhctest",
+        # "-lapp_hello",
        ]
        
     #xtspart1
     if (test_step == "part1") {
     ldflags += [
-        "-ldevattest_sdk",
-        "-ldevattest_core",
-        "-lcjson_static",  
-        "-lhal_token_static",
-       "-lhal_sysparam",
-       "-lmodule_ActsBootstrapTest",#成功
-       "-lmodule_ActsParameterTest",#成功 
+      #"-ldevattest_sdk",
+      #"-ldevattest_core",
+      #"-lcjson_static",  
+      #"-lhal_token_static",
+      #"-lhal_sysparam",
+      #"-lmodule_ActsBootstrapTest",#成功
+      #"-lmodule_ActsParameterTest",#成功 
+      #"-lmodule_ActsUtilsFileTest",
     ]
     }       
 
