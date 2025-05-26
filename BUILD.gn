@@ -21,6 +21,12 @@ if (ohos_kernel_type == "liteos_m") {
       "system",
       "hcs",
     ]
+    if (defined(LOSCFG_BOARD_MB880CD1A)){
+    modules += [
+    "MB880CD1A",
+    ]    
+    }
+    else {
     if (defined(LOSCFG_SOC_SERIES_ING916)) {
     modules += [
     "ing916",
@@ -37,5 +43,6 @@ if (ohos_kernel_type == "liteos_m") {
     ]
     }
     }
+}
 }
 

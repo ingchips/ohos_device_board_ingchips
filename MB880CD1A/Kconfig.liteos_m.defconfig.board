@@ -11,7 +11,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-config SOC
-    string
-    default "ing9187"
-    depends on SOC_ING9187
+#if BOARD_MB880CD1A
+
+
+#config TEST_KCONFIG
+#    bool "test kconfig"
+
+#endif #BOARD_MB880CD1A

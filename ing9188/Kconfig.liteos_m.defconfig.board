@@ -10,22 +10,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-if SOC_SERIES_ING9188
-
-rsource "Kconfig.liteos_m.defconfig.ing9188"
-
-config SOC_SERIES
-    string
-    default "ing9188
-    
-config NUM_IRQS
-    int
-    default 45
-
-config SYS_CLOCK_HW_CYCLES_PER_SEC
-    int
-    default 64000000
-
-endif
-

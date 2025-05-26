@@ -11,13 +11,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# config SOC_ING916
-#     bool
 
-# if LOSCFG_SOC_SERIES_ING916
-orsource "ing916/Kconfig.liteos_m.board"
-# endif # SOC_COMPANY_INGCHIPS
+config BOARD_MB880CD1A
+    bool "MB880CD1A Board"
 
-# if LOSCFG_SOC_SERIES_ING918
-# orsource "ing918/Kconfig.liteos_m.board"
-# endif # SOC_COMPANY_INGCHIPS
+    
+config BOARD_ing9187
+    bool "ing9187 Board"
+
+config BOARD_ing9188
+    bool "ing9188 Board"
+	
+config BOARD_ing916
+    bool "ing916 Board"
+
+
+orsource "*/Kconfig.liteos_m.board"

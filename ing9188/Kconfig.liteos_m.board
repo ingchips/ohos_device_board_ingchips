@@ -1,0 +1,2 @@
+config TEST_KCONFIG
+  bool "test kconfig"
