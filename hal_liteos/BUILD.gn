@@ -22,8 +22,15 @@ kernel_module(module_name) {
         "main.c",
         "profile.c",
         "task_sample.c",
-    ]
+        "dt_698_645.c",
+        "log_flash.c",
+        "ota_service.c",
+        "pulse_comm.c",
+        "uart_driver.c",
+        "zt_comm.c",
+        "zt_frame.c",
 
+    ]
 }
 
 config("public") {
@@ -41,7 +48,8 @@ config("public") {
         "//commonlibrary/utils_lite/include",
         "//commonlibrary/utils_lite/memory/include",
         "//base/hiviewdfx/hilog_lite/interfaces/native/kits/hilog_lite",
-        "//kernel/liteos_m/components/power"
+        "//kernel/liteos_m/components/power",
+        "//third_party/cmsis/CMSIS/RTOS2/Include"
     ]
 }
 

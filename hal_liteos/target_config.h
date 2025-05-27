@@ -67,8 +67,8 @@ extern "C" {
 /*=============================================================================
                                        Task module configuration
 =============================================================================*/
-#define LOSCFG_BASE_CORE_TSK_LIMIT                          16
-#define LOSCFG_BASE_CORE_TSK_DEFAULT_STACK_SIZE             0x400U
+#define LOSCFG_BASE_CORE_TSK_LIMIT                          8
+#define LOSCFG_BASE_CORE_TSK_DEFAULT_STACK_SIZE             0x200U
 #define LOSCFG_BASE_CORE_TSK_MIN_STACK_SIZE                 0x130U
 #define LOSCF
 
@@ -81,28 +81,28 @@ extern "C" {
                                        Semaphore module configuration
 =============================================================================*/
 #define LOSCFG_BASE_IPC_SEM                                 1
-#define LOSCFG_BASE_IPC_SEM_LIMIT                           20
+#define LOSCFG_BASE_IPC_SEM_LIMIT                           10
 /*=============================================================================
                                        Mutex module configuration
 =============================================================================*/
 #define LOSCFG_BASE_IPC_MUX                                 1
-#define LOSCFG_BASE_IPC_MUX_LIMIT                           20
+#define LOSCFG_BASE_IPC_MUX_LIMIT                           10
 /*=============================================================================
                                        Queue module configuration
 =============================================================================*/
 #define LOSCFG_BASE_IPC_QUEUE                               1
-#define LOSCFG_BASE_IPC_QUEUE_LIMIT                         20
+#define LOSCFG_BASE_IPC_QUEUE_LIMIT                         10
 /*=============================================================================
                                        Software timer module configuration
 =============================================================================*/
 #define LOSCFG_BASE_CORE_SWTMR                              1
 #define LOSCFG_BASE_CORE_SWTMR_ALIGN                        0
-#define LOSCFG_BASE_CORE_SWTMR_LIMIT                        20
+#define LOSCFG_BASE_CORE_SWTMR_LIMIT                        10
 /*=============================================================================
                                        Memory module configuration
 =============================================================================*/
 #define LOSCFG_MEM_MUL_POOL                                 0
-#define OS_SYS_MEM_NUM                                      20
+#define OS_SYS_MEM_NUM                                      10
 /*=============================================================================
                                        Exception module configuration
 =============================================================================*/

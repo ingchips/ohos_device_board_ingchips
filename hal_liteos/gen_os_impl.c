@@ -29,11 +29,13 @@ static void *port_malloc(uint32_t size)
 {
     void *ret_ptr;
     ret_ptr =  LOS_MemAlloc(m_aucSysMem0, (size + 0x3) & ~0x3);
+    //printf("port_malloc:%p,size=%d\r\n",ret_ptr,size);
     return ret_ptr;
 }
 
 static void port_free(void *mem)
 {
+    //printf("port_free:%p\r\n",mem);
     LOS_MemFree(m_aucSysMem0, mem);
 }
 
@@ -283,17 +285,17 @@ extern char __HeapBase, __HeapLimit;
 
 void mainTask(void) {
     // Avoiding HCTEST being called before real LiteParamService
-   LiteParamService();
+  // LiteParamService();
 #ifdef LOSCFG_DRIVERS_HDF_STORAGE
 	DeviceManagerStart();
 #endif
-    OHOS_SystemInit();
+   // OHOS_SystemInit();
     /* register hilog output func for mini */
-    HiviewRegisterHilogProc(HilogProc_Impl);
+  //  HiviewRegisterHilogProc(HilogProc_Impl);
    while(1)
    {
-       osDelay(1000);
-       printf("t\r\n");
+       osDelay(10000);
+       //printf("t\r\n");
    }
     return NULL;
 }
@@ -314,8 +316,8 @@ const gen_os_driver_t *os_impl_get_driver(void)
 	extern char __HeapLimit;
 	printf("Heap starts at: %p\n", &__end__);
 	printf("Heap ends at: %p\n", &__HeapLimit);
-	void *ptr = malloc(4);
-	printf("Allocated memory: %p\n", ptr);	
+	//void *ptr = malloc(4);
+	//printf("Allocated memory: %p\n", ptr);	
 	//ptr = ll_malloc(0x9000);
 	//printf("Allocated ll mem: %p\n", ptr);	
     //LOS_KernelInit initializes the NVIC Settings. we don't want to do that.
