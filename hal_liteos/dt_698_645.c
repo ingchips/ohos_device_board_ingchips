@@ -90,7 +90,6 @@ static int procses_frame_645_698(dt698_645_fsm_t *fsm)
             if (fsm->frame.data[fsm->frame.header.dt698_header.len - 9] == 0x16 && 
 				dt698_calc_fcs(&fsm->frame)) {
                 fsm->frame.frame_len = fsm->frame.header.dt698_header.len + 2;
-				dbg_printf("here 3\r\n");
                 frame_698_645_ok(fsm);
                 return 1;
             } else {
@@ -108,7 +107,6 @@ static int procses_frame_645_698(dt698_645_fsm_t *fsm)
                 (fsm->frame.data[fsm->frame.header.dt645_header.len + 1] == 0x16) &&
 				dt645_fcs_IsOk(&fsm->frame)) {
                 fsm->frame.frame_len = fsm->frame.header.dt645_header.len + 12;
-				dbg_printf("here 4\r\n");
 				frame_698_645_ok(fsm);
                 return 1;
             } else {

@@ -417,7 +417,7 @@ void jump_to_pulse_app(void)
 {
     typedef  void (*pFunction)(void);
     __disable_irq();
-    #define JumpAddr 0x30000
+    #define JumpAddr 0x4A000
     {
         int i;
         uint32_t jump =  *(uint32_t *) (JumpAddr + 4);

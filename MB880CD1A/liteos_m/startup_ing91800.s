@@ -3,7 +3,7 @@
 
     .section .stack
     .align    3
-    .equ    Stack_Size, 0x00000400
+    .equ    Stack_Size, 0x400
     .globl    __StackTop
     .globl    __StackLimit
 __StackLimit:
@@ -14,7 +14,7 @@ __StackTop:
 
     .section .heap
     .align    3
-    .equ    Heap_Size, 1024
+    .equ    Heap_Size, 4
     .globl    __HeapBase
     .globl    __HeapLimit
 __HeapBase:

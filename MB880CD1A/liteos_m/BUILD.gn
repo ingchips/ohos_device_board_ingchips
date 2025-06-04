@@ -10,7 +10,10 @@ kernel_module(module_name) {
 
 config("public") {
     cflags  = []
-    lib_dirs =["$root_out_dir/libs" ]
+    lib_dirs =[
+      "$root_out_dir/libs",
+      "//vendor/ph_libs/csg/libary/cooperation/PHM",
+    ]
     print("lib_dir are: ${lib_dirs}")
     test_step = "part1" #修改这个值来选择编译不同的测试部分
     
@@ -21,6 +24,7 @@ config("public") {
         #"-lbroadcast",
         #"-lhctest",
         # "-lapp_hello",
+        "-lcloud_collaborate"
        ]
        
     #xtspart1

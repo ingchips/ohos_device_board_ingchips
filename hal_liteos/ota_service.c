@@ -10,7 +10,6 @@
 #include <string.h>
 
 #include "bluetooth.h"
-#include "att_db_util.h"
 #include "ota_service.h"
 #include "platform_api.h"
 #include "rom_tools.h"

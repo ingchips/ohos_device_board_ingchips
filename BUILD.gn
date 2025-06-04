@@ -16,8 +16,8 @@ if (ohos_kernel_type == "liteos_m") {
   module_name = get_path_info(rebase_path("."), "name")
   module_group(module_name) {
     modules = [
-     
       "hal_liteos",
+      #"test_ble",
       "system",
       "hcs",
     ]

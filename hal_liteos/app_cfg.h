@@ -81,10 +81,10 @@
 
 #endif
 
-#define DT698_MAX_LEN            (64)
+#define DT698_MAX_LEN            (1500)
 #define DT645_MAX_LEN            (200)
 
-#define DATA_MAX_LEN            (64)
+#define DATA_MAX_LEN             (1500)
 
 
 #define DT_698_645_FRAMES_CNT 5//8

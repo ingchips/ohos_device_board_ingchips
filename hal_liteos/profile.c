@@ -2110,7 +2110,7 @@ uint32_t setup_profile(void *data, void *user_data)
 	
 	printf("ll_heap size=%d\r\n",ll_get_heap_free_size());
 	//printf("ll_malloc(25*1024)=%p\r\n",ll_malloc(25*1024));
-    if (ll_malloc(21*1024) != (void *)0x400a84bc)
+    if (ll_malloc(25*1024) != (void *)0x400a74bc)
        platform_raise_assertion(__FILE_NAME__, __LINE__);
 	printf("ll_heap size=%d\r\n",ll_get_heap_free_size());
 	
@@ -2123,10 +2123,10 @@ uint32_t setup_profile(void *data, void *user_data)
     uart_driver_init(COMM_PORT, &uart_comm, (f_uart_rx_byte)comm_frame_rx_byte);
     dt698_645_frame_init();
 
-    LOS_SwtmrCreate (LOS_MS2Tick(5000), LOS_SWTMR_MODE_ONCE, conn_timer_callback, &create_conn_timer, 1);
-    LOS_SwtmrCreate (LOS_MS2Tick(10000), LOS_SWTMR_MODE_ONCE, reset_timer_callback, &reset_timer, 1);
-    LOS_SwtmrCreate (LOS_MS2Tick(1000), LOS_SWTMR_MODE_ONCE, adv_report_callback, &adv_report_timer, 1);
-    LOS_SwtmrCreate (LOS_MS2Tick(1000), LOS_SWTMR_MODE_ONCE, ble_off_timer_callback, &ble_off_timer, 1);
+    LOS_SwtmrCreate (LOS_MS2Tick(5000),  LOS_SWTMR_MODE_PERIOD, conn_timer_callback, &create_conn_timer, 1);
+    LOS_SwtmrCreate (LOS_MS2Tick(10000), LOS_SWTMR_MODE_PERIOD, reset_timer_callback, &reset_timer, 1);
+    LOS_SwtmrCreate (LOS_MS2Tick(1000),  LOS_SWTMR_MODE_PERIOD, adv_report_callback, &adv_report_timer, 1);
+    LOS_SwtmrCreate (LOS_MS2Tick(1000),  LOS_SWTMR_MODE_ONCE, ble_off_timer_callback, &ble_off_timer, 1);
     LOS_SwtmrStart(reset_timer);
 #if (RELEASE_VERSION != RTK_VEISHENG_VERSION)   
     master_comm_timeout_timer = xTimerCreate("comm_timeout",

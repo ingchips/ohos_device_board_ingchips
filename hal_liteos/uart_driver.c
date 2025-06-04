@@ -9,7 +9,7 @@
 #include "los_sem.h"
 
 #ifndef UART_BUFF_SIZE
-#define UART_BUFF_SIZE         (4096)  // must be 2^n
+#define UART_BUFF_SIZE         (4096*2)  // must be 2^n
 #endif
 
 #define UART_BUFF_SIZE_MASK    (UART_BUFF_SIZE - 1)
@@ -279,6 +279,7 @@ void uart_driver_init(UART_TypeDef *port, void *user_data, f_uart_rx_byte rx_byt
     ctx.port = port;
     ctx.rx_byte_cb = rx_byte_cb;
     ctx.user_data = user_data;
+    #if 0
  {
     osThreadAttr_t attr;
 
@@ -296,14 +297,17 @@ void uart_driver_init(UART_TypeDef *port, void *user_data, f_uart_rx_byte rx_byt
         printf("ok to create uart task!\r\n");;
     }
 }
-#if 0
+#endif
+#if 1
 {
     UINT32 tid;
     TSK_INIT_PARAM_S task_init_param = {0};
     task_init_param.usTaskPrio = 5; 
+    task_init_param.uwArg = &ctx;
     task_init_param.pcName = "uart"; 
     task_init_param.pfnTaskEntry = (TSK_ENTRY_FUNC)uart_driver_task;
-    task_init_param.uwStackSize = 1024;        
+    task_init_param.uwStackSize = 512;  
+    task_init_param.uwResved = LOS_TASK_ATTR_JOINABLE;      
     UINT32 ret = LOS_TaskCreate(&tid, &task_init_param); 
     if (LOS_OK == ret)
     printf("LOS_TaskCreate uart ok!");

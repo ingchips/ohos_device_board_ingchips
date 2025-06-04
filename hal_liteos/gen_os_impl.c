@@ -285,17 +285,19 @@ extern char __HeapBase, __HeapLimit;
 
 void mainTask(void) {
     // Avoiding HCTEST being called before real LiteParamService
-  // LiteParamService();
+   //LiteParamService();
 #ifdef LOSCFG_DRIVERS_HDF_STORAGE
 	DeviceManagerStart();
 #endif
    // OHOS_SystemInit();
     /* register hilog output func for mini */
-  //  HiviewRegisterHilogProc(HilogProc_Impl);
+   // HiviewRegisterHilogProc(HilogProc_Impl);
    while(1)
    {
-       osDelay(10000);
-       //printf("t\r\n");
+   struct OsMemPoolHead *pool = (struct OsMemPoolHead *)m_aucSysMem0; // 获取默认内存池
+    printf("waterline: %u bytes,Current:%u bytes\r\n", pool->info.waterLine,pool->info.curUsedSize);  
+    LOS_TaskDelay(LOS_MS2Tick(1000));
+   // printf("t\r\n");
    }
     return NULL;
 }
@@ -303,10 +305,10 @@ UINT32 tid;
 TSK_INIT_PARAM_S task_init_param = {0};
 void MainTaskInit(VOID)
 {
-    task_init_param.usTaskPrio = 2; 
+    task_init_param.usTaskPrio = 6; 
     task_init_param.pcName = "mainTask"; 
     task_init_param.pfnTaskEntry = (TSK_ENTRY_FUNC)mainTask;
-    task_init_param.uwStackSize = 4096;        
+    task_init_param.uwStackSize = 1024;        
     LOS_TaskCreate(&tid, &task_init_param);  
 }
 
@@ -323,6 +325,7 @@ const gen_os_driver_t *os_impl_get_driver(void)
     //LOS_KernelInit initializes the NVIC Settings. we don't want to do that.
     LOS_KernelInit();	
     OsSysTickTimerInit(LOSCFG_BASE_CORE_TICK_RESPONSE_MAX);
+    //DeviceSystemInfoGetInit();
     // RunTaskSample();
     MainTaskInit();
     // OHOS_SystemInit();
