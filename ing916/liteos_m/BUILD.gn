@@ -11,33 +11,33 @@ config("public") {
     cflags  = []
     lib_dirs =["$root_out_dir/libs" ]
     print("lib_dir are: ${lib_dirs}")
-    test_step = "part2" #修改这个值来选择编译不同的测试部分
+    test_step = "part1" #?????????????????
     
     ldflags = [
         "-Wl,-T" + rebase_path("ing916.ld"),
         "-Wl,--whole-archive",
-        "-lbootstrap",
-        "-lbroadcast",
-        "-lhctest",
+        #"-lbootstrap",
+        #"-lbroadcast",
+        #"-lhctest",
        # "-lapp_hello",
        ]
        
     #xtspart1
     if (test_step == "part1") {
     ldflags += [
-        "-ldevattest_sdk",
-        "-ldevattest_core",
-        "-lcjson_static",  
-        "-lhal_token_static",
-       "-lhal_sysparam",
-       "-lmodule_ActsBootstrapTest",#成功
-       "-lmodule_ActsParameterTest",#成功 
+        #"-ldevattest_sdk",
+        #"-ldevattest_core",
+        #"-lcjson_static",  
+        #"-lhal_token_static",
+       #"-lhal_sysparam",
+       #"-lmodule_ActsBootstrapTest",#??
+       #"-lmodule_ActsParameterTest",#?? 
     ]
     }       
 
     #xtspart2
     #test\xts\acts\distributed_schedule_lite\system_ability_manager_hal\BUILD.gn
-    #修改此文件，一次编译部分c文件
+    #?????,??????c??
     else if (test_step == "part2") {
     cflags += [
     "-UINTER_ATTEST_MINI_MODULE",
@@ -47,7 +47,7 @@ config("public") {
       ]
     }
      
-    #xtspart3 flash不够，分成多部分：make menuconfig在kernel中开文件系统及flash驱动
+    #xtspart3 flash??,?????:make menuconfig?kernel???????flash??
     #test\xts\acts\security_lite\huks\liteos_m_adapter\BUILD.gn
     else if (test_step == "part3"){
     cflags += ["-UINTER_ATTEST_MINI_MODULE"]
@@ -62,18 +62,18 @@ config("public") {
     else if (test_step == "part4"){
     cflags += ["-UINTER_ATTEST_MINI_MODULE"]
     ldflags += [
-       "-lmodule_ActsDfxFuncTest",#成功
-       "-lmodule_ActsUpdaterFuncTest",#成功
-       "-lmodule_ActsHieventLiteTest",#成功
+       "-lmodule_ActsDfxFuncTest",#??
+       "-lmodule_ActsUpdaterFuncTest",#??
+       "-lmodule_ActsHieventLiteTest",#??
        ]
     }
 
        
-    ####xtspart5 make menuconfig在kernel中开文件系统及flash驱动
+    ####xtspart5 make menuconfig?kernel???????flash??
     else if (test_step == "part5") {
     cflags += ["-UINTER_ATTEST_MINI_MODULE"]
     ldflags += [
-       "-lmodule_ActsUtilsFileTest",#外挂flash成功
+       "-lmodule_ActsUtilsFileTest",#??flash??
     ]
     }
 

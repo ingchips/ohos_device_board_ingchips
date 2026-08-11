@@ -14,11 +14,12 @@
 import("//drivers/hdf_core/adapter/khdf/liteos_m/hdf.gni")
 
 config("public") {
-  include_dirs = [ "." ]
+  include_dirs = [ 
+  ".",
+  "//device/board/ingchips/ing916/components/spi_flash/include"  
+  ]
 }
 
 hdf_driver("fs_adapter") {
-if (defined(LOSCFG_FS_LITTLEFS)) {
   sources = [ "fs_init.c" ]
-  }
 }

@@ -4,14 +4,12 @@
  *   FLASH.LENGTH: length of flash
  *   RAM.ORIGIN: starting address of RAM bank 0
  *   RAM.LENGTH: length of RAM bank 0
-DRAM (rwx) : ORIGIN = 0x200043E4, LENGTH = 0x5000
  */
 MEMORY
 {
-  FLASH (rx) : ORIGIN = 0x02027000, LENGTH = 364544
-  DRAM (rwx) : ORIGIN = 0x200043E4,  LENGTH = 0x5000
-  RAM (rwx) : ORIGIN = 0x200093E4,  LENGTH = 0x4c1c
-  RAM2 (rwx) : ORIGIN = 0x2000E000, LENGTH = 0x2000
+  FLASH (rx) : ORIGIN = 0x02028000, LENGTH = 364544
+   DRAM (rwx) : ORIGIN = 0x20004998, LENGTH = 0x5500
+  RAM (rwx) : ORIGIN = 0x20009E98, LENGTH = 0x4168
 }
 
 /* Linker script to place sections and symbol values. Should be used together
@@ -257,12 +255,12 @@ SECTIONS
 		/* All data end */
 		__data_end__ = .;
 
-	} > RAM2
-	.los_heap :
+	} > RAM
+
+	.osheap :
 	{
-		__los_heap_addr_start__ = .;
-		__los_heap_addr_end__ = ORIGIN(DRAM) + LENGTH(DRAM) -1;
-		. = ALIGN(4);
+	  __los_heap_addr_start__ = .;
+	  __los_heap_addr_end__ = ORIGIN(DRAM) + LENGTH(DRAM) -1;
 	} > DRAM
 
 	.bss2 :
@@ -274,6 +272,15 @@ SECTIONS
 		__bss2_end__ = .;
 	} > RAM
 	
+	/* .noinit: 复位不清零（Reset_Handler 的 bss 清零范围不含此段），
+	   用于跨 platform 跳转保留的状态标志（如 OS 一次性初始化保护） */
+	.noinit (NOLOAD) :
+	{
+		. = ALIGN(4);
+		*(.noinit*)
+		. = ALIGN(4);
+	} > RAM
+
 	.bss :
 	{
 		. = ALIGN(4);
@@ -290,7 +297,9 @@ SECTIONS
 	{
 		__end__ = .;
 		PROVIDE(end = .);
-		 *(.heap*) 
+		 *(.heap*)
+		/* newlib sbrk 堆固定 2K，其余 RAM 段空间留给应用(任务栈/静态区) */
+		. = . + 0x800;
  		__HeapLimit = .;
 	} > RAM
 

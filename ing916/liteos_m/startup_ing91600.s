@@ -14,7 +14,7 @@ __StackTop:
 
     .section .heap
     .align    3
-    .equ    Heap_Size, 40
+    .equ    Heap_Size, 0
     .globl    __HeapBase
     .globl    __HeapLimit
 __HeapBase:
@@ -41,10 +41,22 @@ __isr_vector:
     .type    Reset_Handler, %function
 Reset_Handler:
 
-    .extern init_memory
-    push    {r1, lr}
-    ldr    r0, =init_memory
-    blx    r0
+   /* make cache to sys memory*/
+    ldr r3, =0x40000028
+    ldr r4, [r3]
+    orr r4, r4, #0x3
+    str r4, [r3]
+    ldr r3, =0x40140000
+    ldr r4, [r3]
+    bic r4, r4, #0x2
+    str r4, [r3]
+    ldr r3, =0x40141000
+    ldr r4, [r3]
+    bic r4, r4, #0x2
+    str r4, [r3]
+
+    /* Save LR and R1 (optional, but safe) */
+    push {r1, lr}
 
 /*  Single section scheme.
  *
@@ -74,19 +86,20 @@ Reset_Handler:
  *
  *  Both addresses must be aligned to 4 bytes boundary.
  */
-ldr    r1, =__bss_start__ 
-ldr    r2, =__bss_end__
+    ldr    r1, =__bss_start__
+    ldr    r2, =__bss_end__
 
-movs   r0, 0
-.L_loop_bss:
+    movs    r0, 0
+.L_loop3:
     cmp    r1, r2
     itt    lt
-    strlt  r0, [r1], #4
-    blt    .L_loop_bss
+    strlt    r0, [r1], #4
+    blt    .L_loop3
 
-ldr    r0, =app_main
-blx    r0
+    ldr     r0, =app_main
+    blx     r0
 
-pop    {r1, pc}
+    pop     {r1, pc}
+
     .pool
     .size    Reset_Handler, . - Reset_Handler

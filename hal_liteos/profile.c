@@ -145,7 +145,7 @@ static btstack_packet_callback_registration_t hci_event_callback_registration;
 
 #define HELLO_TASK_STACK_SIZE   4096
 #define HELLO_TASK_PRIO         25
-static int index = 0;
+static int adv_index = 0;
 #define MS_1000                 1000
 
 static void *ChenTask(const char *arg)
@@ -153,7 +153,7 @@ static void *ChenTask(const char *arg)
     (void)arg;
 
     while (1) {
-        printf("Chen boxian HAHAHAHAHAH! index=%d\r\n", index++);
+        printf("Chen boxian HAHAHAHAHAH! adv_index=%d\r\n", adv_index++);
         osDelay(MS_1000);
     }
 }
@@ -186,7 +186,7 @@ uint32_t setup_profile(void *data, void *user_data)
     att_server_register_packet_handler(&user_packet_handler);
 	//uint32_t ptr = ll_malloc(10*1024);
 	uint32_t size = ll_get_heap_free_size();
-	printf("ll_malloc size=%d\r\n",size);
+	printf("ll heap free size=%d\r\n",size);   /* ll_malloc 为 platform 独占(host/controller)，app 统一用 OS heap */
     //ChenTaskEntry();
     return 0;
 }

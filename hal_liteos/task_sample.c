@@ -31,28 +31,26 @@
  * Description: Provide a task example.
  */
 
-#include "ingsoc.h"
 #include "los_config.h"
 #include "los_debug.h"
 #include "los_interrupt.h"
 #include "los_task.h"
 #include "los_tick.h"
-#include "platform_api.h"
 
 VOID TaskSampleEntry2(VOID)
 {
-    platform_printf("task in entry2\r\n");
+    printf("task in entry2\r\n");
     while (1) {
-        platform_printf("TaskSampleEntry2 running...\r\n");
+        printf("TaskSampleEntry2 running...\r\n");
         LOS_TaskDelay(2000); /* 10 Seconds */
     }
 }
 
 VOID TaskSampleEntry1(VOID)
 {
-    platform_printf("task in entry1\r\n");
+    printf("task in entry1\r\n");
     while (1) {
-        platform_printf("TaskSampleEntry1 running...\r\n");
+        printf("TaskSampleEntry1 running...\r\n");
         LOS_TaskDelay(2000); /* 2 Seconds */
     }
 }
@@ -65,12 +63,12 @@ VOID TaskSample(VOID)
     TSK_INIT_PARAM_S stTask = {0};
 
     stTask.pfnTaskEntry = (TSK_ENTRY_FUNC)TaskSampleEntry1;
-    stTask.uwStackSize = 1024;
+    stTask.uwStackSize = 4096;
     stTask.pcName = "TaskSampleEntry1";
     stTask.usTaskPrio = 8; /* Os task priority is 6 */
     uwRet = LOS_TaskCreate(&taskID1, &stTask);
     if (uwRet != LOS_OK) {
-        platform_printf("Task1 create failed %d\n",uwRet);
+        printf("Task1 create failed %d\n",uwRet);
     }
 
     stTask.pfnTaskEntry = (TSK_ENTRY_FUNC)TaskSampleEntry2;
@@ -79,7 +77,7 @@ VOID TaskSample(VOID)
     stTask.usTaskPrio = 9; /* Os task priority is 7 */
     uwRet = LOS_TaskCreate(&taskID2, &stTask);
     if (uwRet != LOS_OK) {
-        platform_printf("Task2 create failed %d\n",uwRet);
+        printf("Task2 create failed %d\n",uwRet);
     }
 }
 

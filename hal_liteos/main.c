@@ -5,14 +5,15 @@
 #include "platform_api.h"
 #include "port_gen_os_driver.h"
 #include "target_config.h"
-#if TARCE_ENABLE
 #include "trace.h"
-#endif
 #if (INGCHIPS_FAMILY == INGCHIPS_FAMILY_916)
 #include "../data/setup_soc916.cgen"
 #endif
 #if (INGCHIPS_FAMILY == INGCHIPS_FAMILY_918)
 #include "../data/setup_soc918.cgen"
+#endif
+#if (INGCHIPS_FAMILY == INGCHIPS_FAMILY_20)
+#include "../data/setup_soc20.cgen"
 #endif
 
 static uint32_t cb_hard_fault(hard_fault_info_t *info, void *_)
@@ -63,8 +64,31 @@ int _write(int fd, char *ptr, int len)
     return len;
 }
 
+void config_uart(uint32_t freq, uint32_t baud)
+{
+    UART_sStateStruct config;
+
+    config.word_length       = UART_WLEN_8_BITS;
+    config.parity            = UART_PARITY_NOT_CHECK;
+    config.fifo_enable       = 1;
+    config.two_stop_bits     = 0;
+    config.receive_en        = 1;
+    config.transmit_en       = 1;
+    config.UART_en           = 1;
+    config.cts_en            = 0;
+    config.rts_en            = 0;
+    config.rxfifo_waterlevel = 1;
+    config.txfifo_waterlevel = 1;
+    config.ClockFrequency    = freq;
+    config.BaudRate          = baud;
+
+    apUART_Initialize(PRINT_PORT, &config, 0);
+
+}
+
 void setup_peripherals(void)
 {
+    // config_uart(OSC_CLK_FREQ,115200);
     cube_setup_peripherals();
 }
 
@@ -89,6 +113,9 @@ void init_memory(void)
     #if (INGCHIPS_FAMILY == INGCHIPS_FAMILY_916)
     SYSCTRL_CacheControl(1, 1);//set 
     #endif
+    #if (INGCHIPS_FAMILY == INGCHIPS_FAMILY_20)
+    /* ing208: 不启用 cache 作为 RAM，保持默认内存配置 */
+    #endif
 }
 
 uint32_t query_deep_sleep_allowed(void *dummy, void *user_data)
@@ -98,9 +125,8 @@ uint32_t query_deep_sleep_allowed(void *dummy, void *user_data)
     return 0;//PLATFORM_ALLOW_DEEP_SLEEP;
     // TODO: return 0 if deep sleep is not allowed now; else deep sleep is allowed
 }
-#if TARCE_ENABLE
+
 trace_rtt_t trace_rtt ;
-#endif
 
 static const platform_evt_cb_table_t evt_cb_table =
 {
@@ -129,29 +155,41 @@ static const platform_evt_cb_table_t evt_cb_table =
         [PLATFORM_CB_EVT_PUTC] = {
             .f = (f_platform_evt_cb)cb_putc,
         },
-        #if TARCE_ENABLE
         [PLATFORM_CB_EVT_TRACE] = {
             .f = (f_platform_evt_cb)cb_trace_rtt,
             .user_data = &cb_trace_rtt,
         },
-        #endif
-        
     }
 };
 
 const char welcome_msg[] = "Built with LiteOS (" HW_LITEOS_KERNEL_VERSION_STRING ")";
 // TODO: add RTOS source code to the project.
+#if (INGCHIPS_FAMILY == INGCHIPS_FAMILY_20)
+/*
+ * ing208: newlib crt0 因链接组被拉入并引用 main（实际入口是
+ * Reset_Handler -> app_main，main 不会被执行），提供空实现满足链接。
+ */
+int main(void)
+{
+    for (;;) {
+    }
+}
+#endif
+
 extern const gen_os_driver_t *os_impl_get_driver(void);
+extern void RunTaskSample(void);
 uintptr_t app_main()
 {
+    #ifdef PLATFORM_IN_ROM
+    platform_rom_hotfix();
+    #endif
+
     SYSCTRL_Init();
-    cube_soc_init();
 
     // setup event handlers
     platform_set_evt_callback_table(&evt_cb_table);
     setup_peripherals();
-	SYSCTRL_SelectMemoryBlocks(0x3FF);//全选
-    printf("build@%s\r\n",__TIME__);
+    platform_printf("build@%s\r\n",__TIME__);
     printf("build@%d\r\n",__LINE__);
 
     //trace_uart_init(&trace_ctx);
@@ -159,6 +197,6 @@ uintptr_t app_main()
     platform_config(PLATFORM_CFG_TRACE_MASK, 0);
     //platform_config(PLATFORM_CFG_POWER_SAVING, PLATFORM_CFG_ENABLE);
     printf("start up\r\n");
-
+    
     return (uintptr_t)os_impl_get_driver();
 }

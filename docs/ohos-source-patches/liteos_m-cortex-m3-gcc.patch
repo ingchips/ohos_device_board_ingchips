@@ -1,0 +1,2829 @@
+diff --git a/arch/arm/cortex-m3/gcc/BUILD.gn b/arch/arm/cortex-m3/gcc/BUILD.gn
+new file mode 100644
+index 00000000..f7ba5104
+--- /dev/null
++++ b/arch/arm/cortex-m3/gcc/BUILD.gn
+@@ -0,0 +1,47 @@
++# Copyright (c) 2013-2019 Huawei Technologies Co., Ltd. All rights reserved.
++# Copyright (c) 2020-2021 Huawei Device Co., Ltd. All rights reserved.
++#
++# Redistribution and use in source and binary forms, with or without modification,
++# are permitted provided that the following conditions are met:
++#
++# 1. Redistributions of source code must retain the above copyright notice, this list of
++#    conditions and the following disclaimer.
++#
++# 2. Redistributions in binary form must reproduce the above copyright notice, this list
++#    of conditions and the following disclaimer in the documentation and/or other materials
++#    provided with the distribution.
++#
++# 3. Neither the name of the copyright holder nor the names of its contributors may be used
++#    to endorse or promote products derived from this software without specific prior written
++#    permission.
++#
++# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
++# THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
++# PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
++# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
++# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
++# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
++# OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
++# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++# OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
++# ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++
++import("//kernel/liteos_m/liteos.gni")
++
++module_name = "arch"
++kernel_module(module_name) {
++  sources = [
++    "los_context.c",
++    "los_dispatch.S",
++    "los_exc.S",
++    "los_interrupt.c",
++    "los_mpu.c",
++    "los_timer.c",
++  ]
++  configs += [ "$LITEOSTOPDIR:warn_config" ]
++}
++
++config("public") {
++  include_dirs = [ "." ]
++}
+diff --git a/arch/arm/cortex-m3/gcc/los_arch_atomic.h b/arch/arm/cortex-m3/gcc/los_arch_atomic.h
+new file mode 100644
+index 00000000..e5793263
+--- /dev/null
++++ b/arch/arm/cortex-m3/gcc/los_arch_atomic.h
+@@ -0,0 +1,297 @@
++/*
++ * Copyright (c) 2013-2019 Huawei Technologies Co., Ltd. All rights reserved.
++ * Copyright (c) 2020-2022 Huawei Device Co., Ltd. All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without modification,
++ * are permitted provided that the following conditions are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright notice, this list of
++ *    conditions and the following disclaimer.
++ *
++ * 2. Redistributions in binary form must reproduce the above copyright notice, this list
++ *    of conditions and the following disclaimer in the documentation and/or other materials
++ *    provided with the distribution.
++ *
++ * 3. Neither the name of the copyright holder nor the names of its contributors may be used
++ *    to endorse or promote products derived from this software without specific prior written
++ *    permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
++ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
++ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
++ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
++ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
++ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
++ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
++ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
++ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#ifndef _LOS_ARCH_ATOMIC_H
++#define _LOS_ARCH_ATOMIC_H
++
++#include "los_compiler.h"
++#include "los_interrupt.h"
++
++#ifdef __cplusplus
++#if __cplusplus
++extern "C" {
++#endif /* __cplusplus */
++#endif /* __cplusplus */
++
++STATIC INLINE INT32 ArchAtomicRead(const Atomic *v)
++{
++    INT32 val;
++
++    __asm__ __volatile__("ldrex %0, [%1]\n"
++                         : "=&r"(val)
++                         : "r"(v)
++                         : "cc");
++
++    return val;
++}
++
++STATIC INLINE VOID ArchAtomicSet(Atomic *v, INT32 setVal)
++{
++    UINT32 status;
++
++    do {
++        __asm__ __volatile__("ldrex %0, [%1]\n"
++                             "strex %0, %2, [%1]\n"
++                             : "=&r"(status)
++                             : "r"(v), "r"(setVal)
++                             : "cc");
++    } while (__builtin_expect(status != 0, 0));
++}
++
++STATIC INLINE INT32 ArchAtomicAdd(Atomic *v, INT32 addVal)
++{
++    INT32 val;
++    UINT32 status;
++
++    do {
++        __asm__ __volatile__("ldrex %1, [%2]\n"
++                             "add %1, %1, %3\n"
++                             "strex %0, %1, [%2]"
++                             : "=&r"(status), "=&r"(val)
++                             : "r"(v), "r"(addVal)
++                             : "cc");
++    } while (__builtin_expect(status != 0, 0));
++
++    return val;
++}
++
++STATIC INLINE INT32 ArchAtomicSub(Atomic *v, INT32 subVal)
++{
++    INT32 val;
++    UINT32 status;
++
++    do {
++        __asm__ __volatile__("ldrex %1, [%2]\n"
++                             "sub %1, %1, %3\n"
++                             "strex %0, %1, [%2]"
++                             : "=&r"(status), "=&r"(val)
++                             : "r"(v), "r"(subVal)
++                             : "cc");
++    } while (__builtin_expect(status != 0, 0));
++
++    return val;
++}
++
++STATIC INLINE VOID ArchAtomicInc(Atomic *v)
++{
++    (VOID)ArchAtomicAdd(v, 1);
++}
++
++STATIC INLINE VOID ArchAtomicDec(Atomic *v)
++{
++    (VOID)ArchAtomicSub(v, 1);
++}
++
++STATIC INLINE INT32 ArchAtomicIncRet(Atomic *v)
++{
++    return ArchAtomicAdd(v, 1);
++}
++
++STATIC INLINE INT32 ArchAtomicDecRet(Atomic *v)
++{
++    return ArchAtomicSub(v, 1);
++}
++
++/**
++ * @ingroup  los_arch_atomic
++ * @brief Atomic exchange for 32-bit variable.
++ *
++ * @par Description:
++ * This API is used to implement the atomic exchange for 32-bit variable
++ * and return the previous value of the atomic variable.
++ * @attention
++ * <ul>The pointer v must not be NULL.</ul>
++ *
++ * @param  v       [IN] The variable pointer.
++ * @param  val     [IN] The exchange value.
++ *
++ * @retval #INT32       The previous value of the atomic variable
++ * @par Dependency:
++ * <ul><li>los_arch_atomic.h: the header file that contains the API declaration.</li></ul>
++ * @see
++ */
++STATIC INLINE INT32 ArchAtomicXchg32bits(volatile INT32 *v, INT32 val)
++{
++    INT32 prevVal = 0;
++    UINT32 status = 0;
++
++    do {
++        __asm__ __volatile__("ldrex %0, [%3]\n"
++                             "strex %1, %4, [%3]"
++                             : "=&r"(prevVal), "=&r"(status), "+m"(*v)
++                             : "r"(v), "r"(val)
++                             : "cc");
++    } while (__builtin_expect(status != 0, 0));
++
++    return prevVal;
++}
++
++/**
++ * @ingroup  los_arch_atomic
++ * @brief Atomic exchange for 32-bit variable with compare.
++ *
++ * @par Description:
++ * This API is used to implement the atomic exchange for 32-bit variable, if the value of variable is equal to oldVal.
++ * @attention
++ * <ul>The pointer v must not be NULL.</ul>
++ *
++ * @param  v       [IN] The variable pointer.
++ * @param  val     [IN] The new value.
++ * @param  oldVal  [IN] The old value.
++ *
++ * @retval TRUE  The previous value of the atomic variable is not equal to oldVal.
++ * @retval FALSE The previous value of the atomic variable is equal to oldVal.
++ * @par Dependency:
++ * <ul><li>los_arch_atomic.h: the header file that contains the API declaration.</li></ul>
++ * @see
++ */
++STATIC INLINE BOOL ArchAtomicCmpXchg32bits(volatile INT32 *v, INT32 val, INT32 oldVal)
++{
++    INT32 prevVal = 0;
++    UINT32 status = 0;
++
++    do {
++        __asm__ __volatile__("ldrex %0, %2\n"
++                             "mov %1, #0\n"
++                             "cmp %0, %3\n"
++                             "bne 1f\n"
++                             "strex %1, %4, %2\n"
++                             "1:"
++                             : "=&r"(prevVal), "=&r"(status), "+Q"(*v)
++                             : "r"(oldVal), "r"(val)
++                             : "cc");
++    } while (__builtin_expect(status != 0, 0));
++
++    return prevVal != oldVal;
++}
++
++STATIC INLINE INT64 ArchAtomic64Read(const Atomic64 *v)
++{
++    INT64 val;
++    UINT32 intSave;
++
++    intSave = LOS_IntLock();
++    val = *v;
++    LOS_IntRestore(intSave);
++
++    return val;
++}
++
++STATIC INLINE VOID ArchAtomic64Set(Atomic64 *v, INT64 setVal)
++{
++    UINT32 intSave;
++
++    intSave = LOS_IntLock();
++    *v = setVal;
++    LOS_IntRestore(intSave);
++}
++
++STATIC INLINE INT64 ArchAtomic64Add(Atomic64 *v, INT64 addVal)
++{
++    INT64 val;
++    UINT32 intSave;
++
++    intSave = LOS_IntLock();
++    *v += addVal;
++    val = *v;
++    LOS_IntRestore(intSave);
++
++    return val;
++}
++
++STATIC INLINE INT64 ArchAtomic64Sub(Atomic64 *v, INT64 subVal)
++{
++    INT64 val;
++    UINT32 intSave;
++
++    intSave = LOS_IntLock();
++    *v -= subVal;
++    val = *v;
++    LOS_IntRestore(intSave);
++
++    return val;
++}
++
++STATIC INLINE VOID ArchAtomic64Inc(Atomic64 *v)
++{
++    (VOID)ArchAtomic64Add(v, 1);
++}
++
++STATIC INLINE INT64 ArchAtomic64IncRet(Atomic64 *v)
++{
++    return ArchAtomic64Add(v, 1);
++}
++
++STATIC INLINE VOID ArchAtomic64Dec(Atomic64 *v)
++{
++    (VOID)ArchAtomic64Sub(v, 1);
++}
++
++STATIC INLINE INT64 ArchAtomic64DecRet(Atomic64 *v)
++{
++    return ArchAtomic64Sub(v, 1);
++}
++
++STATIC INLINE INT64 ArchAtomicXchg64bits(Atomic64 *v, INT64 val)
++{
++    INT64 prevVal;
++    UINT32 intSave;
++
++    intSave = LOS_IntLock();
++    prevVal = *v;
++    *v = val;
++    LOS_IntRestore(intSave);
++
++    return prevVal;
++}
++
++STATIC INLINE BOOL ArchAtomicCmpXchg64bits(Atomic64 *v, INT64 val, INT64 oldVal)
++{
++    INT64 prevVal;
++    UINT32 intSave;
++
++    intSave = LOS_IntLock();
++    prevVal = *v;
++    if (prevVal == oldVal) {
++        *v = val;
++    }
++    LOS_IntRestore(intSave);
++
++    return prevVal != oldVal;
++}
++
++#ifdef __cplusplus
++#if __cplusplus
++}
++#endif /* __cplusplus */
++#endif /* __cplusplus */
++
++#endif /* _LOS_ARCH_ATOMIC_H */
+diff --git a/arch/arm/cortex-m3/gcc/los_arch_context.h b/arch/arm/cortex-m3/gcc/los_arch_context.h
+new file mode 100644
+index 00000000..16659b41
+--- /dev/null
++++ b/arch/arm/cortex-m3/gcc/los_arch_context.h
+@@ -0,0 +1,153 @@
++/*
++ * Copyright (c) 2013-2019 Huawei Technologies Co., Ltd. All rights reserved.
++ * Copyright (c) 2020-2022 Huawei Device Co., Ltd. All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without modification,
++ * are permitted provided that the following conditions are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright notice, this list of
++ *    conditions and the following disclaimer.
++ *
++ * 2. Redistributions in binary form must reproduce the above copyright notice, this list
++ *    of conditions and the following disclaimer in the documentation and/or other materials
++ *    provided with the distribution.
++ *
++ * 3. Neither the name of the copyright holder nor the names of its contributors may be used
++ *    to endorse or promote products derived from this software without specific prior written
++ *    permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
++ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
++ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
++ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
++ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
++ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
++ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
++ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
++ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#ifndef _LOS_ARCH_CONTEXT_H
++#define _LOS_ARCH_CONTEXT_H
++
++#include "los_config.h"
++#include "los_compiler.h"
++
++#ifdef __cplusplus
++#if __cplusplus
++extern "C" {
++#endif /* __cplusplus */
++#endif /* __cplusplus */
++
++typedef struct TagTskContext {
++#if ((defined(__FPU_PRESENT) && (__FPU_PRESENT == 1U)) && \
++     (defined(__FPU_USED) && (__FPU_USED == 1U)))
++    UINT32 S16;
++    UINT32 S17;
++    UINT32 S18;
++    UINT32 S19;
++    UINT32 S20;
++    UINT32 S21;
++    UINT32 S22;
++    UINT32 S23;
++    UINT32 S24;
++    UINT32 S25;
++    UINT32 S26;
++    UINT32 S27;
++    UINT32 S28;
++    UINT32 S29;
++    UINT32 S30;
++    UINT32 S31;
++#endif
++    UINT32 uwR4;
++    UINT32 uwR5;
++    UINT32 uwR6;
++    UINT32 uwR7;
++    UINT32 uwR8;
++    UINT32 uwR9;
++    UINT32 uwR10;
++    UINT32 uwR11;
++    UINT32 uwPriMask;
++    UINT32 uwR0;
++    UINT32 uwR1;
++    UINT32 uwR2;
++    UINT32 uwR3;
++    UINT32 uwR12;
++    UINT32 uwLR;
++    UINT32 uwPC;
++    UINT32 uwxPSR;
++#if ((defined(__FPU_PRESENT) && (__FPU_PRESENT == 1U)) && \
++     (defined(__FPU_USED) && (__FPU_USED == 1U)))
++    UINT32 S0;
++    UINT32 S1;
++    UINT32 S2;
++    UINT32 S3;
++    UINT32 S4;
++    UINT32 S5;
++    UINT32 S6;
++    UINT32 S7;
++    UINT32 S8;
++    UINT32 S9;
++    UINT32 S10;
++    UINT32 S11;
++    UINT32 S12;
++    UINT32 S13;
++    UINT32 S14;
++    UINT32 S15;
++    UINT32 FPSCR;
++    UINT32 NO_NAME;
++#endif
++} TaskContext;
++
++/**
++ * @ingroup  los_config
++ * @brief: Task start running function.
++ *
++ * @par Description:
++ * This API is used to start a task.
++ *
++ * @attention:
++ * <ul><li>None.</li></ul>
++ *
++ * @param: None.
++ *
++ * @retval None.
++ *
++ * @par Dependency:
++ * <ul><li>los_config.h: the header file that contains the API declaration.</li></ul>
++ * @see None.
++ */
++extern VOID HalStartToRun(VOID);
++
++#if (LOSCFG_SECURE == 1)
++/**
++ * @ingroup  los_config
++ * @brief: User Task Stack Initialize.
++ *
++ * @par Description:
++ * This API is used to init a user task stack.
++ *
++ * @attention:
++ * <ul><li>None.</li></ul>
++ *
++ * @param: context      [IN] Task context.
++ * @param: taskEntry    [IN] Task entry function address.
++ * @param: stack        [IN] Task stack address.
++ *
++ * @retval None.
++ *
++ * @par Dependency: <ul><li>los_config.h: the header file that contains the API declaration.</li></ul>
++ * @see None.
++ */
++extern VOID HalUserTaskStackInit(TaskContext *context, UINTPTR taskEntry, UINTPTR stack);
++#endif
++
++#ifdef __cplusplus
++#if __cplusplus
++}
++#endif /* __cplusplus */
++#endif /* __cplusplus */
++
++#endif /* _LOS_ARCH_CONTEXT_H */
+diff --git a/arch/arm/cortex-m3/gcc/los_arch_interrupt.h b/arch/arm/cortex-m3/gcc/los_arch_interrupt.h
+new file mode 100644
+index 00000000..d4685366
+--- /dev/null
++++ b/arch/arm/cortex-m3/gcc/los_arch_interrupt.h
+@@ -0,0 +1,621 @@
++/*
++ * Copyright (c) 2013-2019 Huawei Technologies Co., Ltd. All rights reserved.
++ * Copyright (c) 2020-2023 Huawei Device Co., Ltd. All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without modification,
++ * are permitted provided that the following conditions are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright notice, this list of
++ *    conditions and the following disclaimer.
++ *
++ * 2. Redistributions in binary form must reproduce the above copyright notice, this list
++ *    of conditions and the following disclaimer in the documentation and/or other materials
++ *    provided with the distribution.
++ *
++ * 3. Neither the name of the copyright holder nor the names of its contributors may be used
++ *    to endorse or promote products derived from this software without specific prior written
++ *    permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
++ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
++ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
++ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
++ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
++ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
++ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
++ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
++ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#ifndef _LOS_ARCH_INTERRUPT_H
++#define _LOS_ARCH_INTERRUPT_H
++
++#include "los_common_interrupt.h"
++
++#ifdef __cplusplus
++#if __cplusplus
++extern "C" {
++#endif /* __cplusplus */
++#endif /* __cplusplus */
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Highest priority of a hardware interrupt.
++ */
++#ifndef OS_HWI_PRIO_HIGHEST
++#define OS_HWI_PRIO_HIGHEST                   0
++#endif
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Lowest priority of a hardware interrupt.
++ */
++#ifndef OS_HWI_PRIO_LOWEST
++#define OS_HWI_PRIO_LOWEST                    7
++#endif
++
++/* *
++ * @ingroup los_arch_interrupt
++ * AIRCR register priority group parameter .
++ */
++#define OS_NVIC_AIRCR_PRIGROUP                7
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Boot interrupt vector table.
++ */
++extern UINT32 _BootVectors[];
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Count of M-Core system interrupt vector.
++ */
++#define OS_SYS_VECTOR_CNT                     16
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Count of M-Core interrupt vector.
++ */
++#define OS_VECTOR_CNT                         (OS_SYS_VECTOR_CNT + OS_HWI_MAX_NUM)
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Hardware interrupt error code: Invalid interrupt number.
++ *
++ * Value: 0x02000900
++ *
++ * Solution: Ensure that the interrupt number is valid.
++ * The value range of the interrupt number applicable for a Cortex-M4  platform is [OS_USER_HWI_MIN,OS_USER_HWI_MAX].
++ */
++#define OS_ERRNO_HWI_NUM_INVALID              LOS_ERRNO_OS_ERROR(LOS_MOD_HWI, 0x00)
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Hardware interrupt error code: Null hardware interrupt handling function.
++ *
++ * Value: 0x02000901
++ *
++ * Solution: Pass in a valid non-null hardware interrupt handling function.
++ */
++#define OS_ERRNO_HWI_PROC_FUNC_NULL           LOS_ERRNO_OS_ERROR(LOS_MOD_HWI, 0x01)
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Hardware interrupt error code: Insufficient interrupt resources for hardware interrupt creation.
++ *
++ * Value: 0x02000902
++ *
++ * Solution: Increase the configured maximum number of supported hardware interrupts.
++ */
++#define OS_ERRNO_HWI_CB_UNAVAILABLE           LOS_ERRNO_OS_ERROR(LOS_MOD_HWI, 0x02)
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Hardware interrupt error code: Insufficient memory for hardware interrupt initialization.
++ *
++ * Value: 0x02000903
++ *
++ * Solution: Expand the configured memory.
++ */
++#define OS_ERRNO_HWI_NO_MEMORY                LOS_ERRNO_OS_ERROR(LOS_MOD_HWI, 0x03)
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Hardware interrupt error code: The interrupt has already been created.
++ *
++ * Value: 0x02000904
++ *
++ * Solution: Check whether the interrupt specified by the passed-in interrupt number has already been created.
++ */
++#define OS_ERRNO_HWI_ALREADY_CREATED          LOS_ERRNO_OS_ERROR(LOS_MOD_HWI, 0x04)
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Hardware interrupt error code: Invalid interrupt priority.
++ *
++ * Value: 0x02000905
++ *
++ * Solution: Ensure that the interrupt priority is valid.
++ * The value range of the interrupt priority applicable for a Cortex-M4 platform is [0,15].
++ */
++#define OS_ERRNO_HWI_PRIO_INVALID             LOS_ERRNO_OS_ERROR(LOS_MOD_HWI, 0x05)
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Hardware interrupt error code: Incorrect interrupt creation mode.
++ *
++ * Value: 0x02000906
++ *
++ * Solution: The interrupt creation mode can be only set to OS_HWI_MODE_COMM or
++ * OS_HWI_MODE_FAST of which the value can be 0 or 1.
++ */
++#define OS_ERRNO_HWI_MODE_INVALID             LOS_ERRNO_OS_ERROR(LOS_MOD_HWI, 0x06)
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Hardware interrupt error code: The interrupt has already been created as a fast interrupt.
++ *
++ * Value: 0x02000907
++ *
++ * Solution: Check whether the interrupt specified by the passed-in interrupt number has already been created.
++ */
++#define OS_ERRNO_HWI_FASTMODE_ALREADY_CREATED LOS_ERRNO_OS_ERROR(LOS_MOD_HWI, 0x07)
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Hardware interrupt error code: Invalid interrupt operation function.
++ *
++ * Value: 0x0200090c
++ *
++ * Solution: Set a valid interrupt operation function
++ */
++#define OS_ERRNO_HWI_OPS_FUNC_NULL            LOS_ERRNO_OS_ERROR(LOS_MOD_HWI, 0x0c)
++
++/* *
++ * @ingroup los_arch_interrupt
++ * SysTick control and status register.
++ */
++#define OS_SYSTICK_CONTROL_REG                0xE000E010
++
++/* *
++ * @ingroup los_hw
++ * SysTick current value register.
++ */
++#define OS_SYSTICK_CURRENT_REG                0xE000E018
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Interrupt Priority-Level Registers.
++ */
++#define OS_NVIC_PRI_BASE                      0xE000E400
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Interrupt enable register for 0-31.
++ */
++#define OS_NVIC_SETENA_BASE                   0xE000E100
++
++/* *
++ * @ingroup los_arch_interrupt
++ * interrupt pending register.
++ */
++#define OS_NVIC_SETPEND_BASE                  0xE000E200
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Interrupt active register.
++ */
++#define OS_NVIC_INT_ACT_BASE                  0xE000E300
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Interrupt disable register for 0-31.
++ */
++#define OS_NVIC_CLRENA_BASE                   0xE000E180
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Interrupt control and status register.
++ */
++#define OS_NVIC_INT_CTRL                      0xE000ED04
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Vector table offset register.
++ */
++#define OS_NVIC_VTOR                          0xE000ED08
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Application interrupt and reset control register
++ */
++#define OS_NVIC_AIRCR                         0xE000ED0C
++
++/* *
++ * @ingroup los_arch_interrupt
++ * System exception priority register.
++ */
++#define OS_NVIC_EXCPRI_BASE                   0xE000ED18
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Interrupt No. 1 :reset.
++ */
++#define OS_EXC_RESET                          1
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Interrupt No. 2 :Non-Maskable Interrupt.
++ */
++#define OS_EXC_NMI                            2
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Interrupt No. 3 :(hard)fault.
++ */
++#define OS_EXC_HARD_FAULT                     3
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Interrupt No. 4 :MemManage fault.
++ */
++#define OS_EXC_MPU_FAULT                      4
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Interrupt No. 5 :Bus fault.
++ */
++#define OS_EXC_BUS_FAULT                      5
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Interrupt No. 6 :Usage fault.
++ */
++#define OS_EXC_USAGE_FAULT                    6
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Interrupt No. 11 :SVCall.
++ */
++#define OS_EXC_SVC_CALL                       11
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Interrupt No. 12 :Debug monitor.
++ */
++#define OS_EXC_DBG_MONITOR                    12
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Interrupt No. 14 :PendSV.
++ */
++#define OS_EXC_PEND_SV                        14
++
++/* *
++ * @ingroup los_arch_interrupt
++ * Interrupt No. 15 :SysTick.
++ */
++#define OS_EXC_SYS_TICK                       15
++
++/* *
++ * @ingroup  los_arch_interrupt
++ * @brief: Hardware interrupt entry function.
++ *
++ * @par Description:
++ * This API is used as all hardware interrupt handling function entry.
++ *
++ * @attention:
++ * <ul><li>None.</li></ul>
++ *
++ * @param:None.
++ *
++ * @retval:None.
++ * @par Dependency:
++ * <ul><li>los_arch_interrupt.h: the header file that contains the API declaration.</li></ul>
++ * @see None.
++ */
++extern VOID HalInterrupt(VOID);
++
++/* *
++ * @ingroup  los_arch_interrupt
++ * @brief: Reset the vector table.
++ *
++ * @par Description:
++ * This API is used to reset the vector table.
++ *
++ * @attention:
++ * <ul><li>None.</li></ul>
++ *
++ * @param:None.
++ *
++ * @retval:None.
++ * @par Dependency:
++ * <ul><li>los_arch_interrupt.h: the header file that contains the API declaration.</li></ul>
++ * @see None.
++ */
++extern VOID Reset_Handler(VOID);
++
++/* *
++ * @ingroup  los_arch_interrupt
++ * @brief: Pended System Call.
++ *
++ * @par Description:
++ * PendSV can be pended and is useful for an OS to pend an exception
++ * so that an action can be performed after other important tasks are completed.
++ *
++ * @attention:
++ * <ul><li>None.</li></ul>
++ *
++ * @param:None.
++ *
++ * @retval:None.
++ * @par Dependency:
++ * <ul><li>los_arch_interrupt.h: the header file that contains the API declaration.</li></ul>
++ * @see None.
++ */
++extern VOID HalPendSV(VOID);
++
++#define OS_EXC_MAX_BUF_LEN                  25
++#define OS_EXC_MAX_NEST_DEPTH               1
++#define OS_EXC_FLAG_NO_FLOAT                0x10000000
++
++#define OS_NVIC_SHCSR                       0xE000ED24
++#define OS_NVIC_CCR                         0xE000ED14
++#define OS_NVIC_INT_ENABLE_SIZE             0x20
++#define OS_NVIC_INT_PRI_SIZE                0xF0
++#define OS_NVIC_EXCPRI_SIZE                 0xC
++#define OS_NVIC_INT_CTRL_SIZE               4
++#define OS_NVIC_SHCSR_SIZE                  4
++#define OS_NVIC_INT_PEND_SIZE               OS_NVIC_INT_ACT_SIZE
++#define OS_NVIC_INT_ACT_SIZE                OS_NVIC_INT_ENABLE_SIZE
++
++/**
++ * @ingroup los_exc
++ * the struct of register files
++ *
++ * description: the register files that saved when exception triggered
++ *
++ * notes:the following register with prefix 'uw'  correspond to the registers in the cpu  data sheet.
++ */
++typedef struct TagExcContext {
++#if ((defined (__FPU_PRESENT) && (__FPU_PRESENT == 1U)) && \
++     (defined (__FPU_USED   ) && (__FPU_USED    == 1U))     )
++    UINT32 S16;
++    UINT32 S17;
++    UINT32 S18;
++    UINT32 S19;
++    UINT32 S20;
++    UINT32 S21;
++    UINT32 S22;
++    UINT32 S23;
++    UINT32 S24;
++    UINT32 S25;
++    UINT32 S26;
++    UINT32 S27;
++    UINT32 S28;
++    UINT32 S29;
++    UINT32 S30;
++    UINT32 S31;
++#endif
++    UINT32 uwR4;
++    UINT32 uwR5;
++    UINT32 uwR6;
++    UINT32 uwR7;
++    UINT32 uwR8;
++    UINT32 uwR9;
++    UINT32 uwR10;
++    UINT32 uwR11;
++    UINT32 uwPriMask;
++    /* auto save */
++    UINT32 uwSP;
++    UINT32 uwR0;
++    UINT32 uwR1;
++    UINT32 uwR2;
++    UINT32 uwR3;
++    UINT32 uwR12;
++    UINT32 uwLR;
++    UINT32 uwPC;
++    UINT32 uwxPSR;
++#if ((defined (__FPU_PRESENT) && (__FPU_PRESENT == 1U)) && \
++     (defined (__FPU_USED) && (__FPU_USED== 1U)))
++    UINT32 S0;
++    UINT32 S1;
++    UINT32 S2;
++    UINT32 S3;
++    UINT32 S4;
++    UINT32 S5;
++    UINT32 S6;
++    UINT32 S7;
++    UINT32 S8;
++    UINT32 S9;
++    UINT32 S10;
++    UINT32 S11;
++    UINT32 S12;
++    UINT32 S13;
++    UINT32 S14;
++    UINT32 S15;
++    UINT32 FPSCR;
++    UINT32 NO_NAME;
++#endif
++} EXC_CONTEXT_S;
++
++typedef VOID (*EXC_PROC_FUNC)(UINT32, EXC_CONTEXT_S *);
++VOID HalExcHandleEntry(UINT32 excType, UINT32 faultAddr, UINT32 pid, EXC_CONTEXT_S *excBufAddr);
++VOID HalExcNMI(VOID);
++VOID HalExcHardFault(VOID);
++VOID HalExcMemFault(VOID);
++VOID HalExcBusFault(VOID);
++VOID HalExcUsageFault(VOID);
++VOID HalExcSvcCall(VOID);
++VOID HalHwiInit(VOID);
++
++/**
++ * @ingroup los_exc
++ * Cortex-M exception types: An error occurred while the bus status register was being pushed.
++ */
++#define OS_EXC_BF_STKERR           1
++
++/**
++ * @ingroup los_exc
++ * Cortex-M exception types: An error occurred while the bus status register was out of the stack.
++ */
++#define OS_EXC_BF_UNSTKERR         2
++
++/**
++ * @ingroup los_exc
++ * Cortex-M exception types: Bus status register imprecise data access violation.
++ */
++#define OS_EXC_BF_IMPRECISERR      3
++
++/**
++ * @ingroup los_exc
++ * Cortex-M exception types: Bus status register exact data access violation.
++ */
++#define OS_EXC_BF_PRECISERR        4
++
++/**
++ * @ingroup los_exc
++ * Cortex-M exception types: Bus status register access violation while pointing.
++ */
++#define OS_EXC_BF_IBUSERR          5
++
++/**
++ * @ingroup los_exc
++ * Cortex-M exception types: An error occurred while the memory management status register was being pushed.
++ */
++#define OS_EXC_MF_MSTKERR          6
++
++/**
++ * @ingroup los_exc
++ * Cortex-M exception types: An error occurred while the memory management status register was out of the stack.
++ */
++#define OS_EXC_MF_MUNSTKERR        7
++
++/**
++ * @ingroup los_exc
++ * Cortex-M exception types: Memory management status register data access violation.
++ */
++#define OS_EXC_MF_DACCVIOL         8
++
++/**
++ * @ingroup los_exc
++ * Cortex-M exception types: Memory management status register access violation.
++ */
++#define OS_EXC_MF_IACCVIOL         9
++
++
++/**
++ * @ingroup los_exc
++ * Cortex-M exception types: Incorrect usage indicating that the divisor is zero during the division operation.
++ */
++#define OS_EXC_UF_DIVBYZERO        10
++
++/**
++ * @ingroup los_exc
++ * Cortex-M exception types: Usage error, error caused by unaligned access.
++ */
++#define OS_EXC_UF_UNALIGNED        11
++
++/**
++ * @ingroup los_exc
++ * Cortex-M exception types: Incorrect usage attempting to execute coprocessor related instruction.
++ */
++#define OS_EXC_UF_NOCP             12
++
++/**
++ * @ingroup los_exc
++ * Cortex-M exception types: Usage error attempting to load EXC_RETURN to PC illegally on exception return.
++ */
++#define OS_EXC_UF_INVPC            13
++
++/**
++ * @ingroup los_exc
++ * Cortex-M exception types: Incorrect usage, attempting to cut to ARM state.
++ */
++#define OS_EXC_UF_INVSTATE         14
++
++/**
++ * @ingroup los_exc
++ * Cortex-M exception types: Incorrect usage. Executed instruction whose code is undefined.
++ */
++#define OS_EXC_UF_UNDEFINSTR       15
++
++/**
++ * @ingroup los_exc
++ * Cortex-M exception types: NMI
++ */
++
++#define OS_EXC_CAUSE_NMI           16
++
++/**
++ * @ingroup los_exc
++ * Cortex-M exception types: hard fault
++ */
++#define OS_EXC_CAUSE_HARDFAULT     17
++
++/**
++ * @ingroup los_exc
++ * Cortex-M exception types: The task handler exits.
++ */
++#define OS_EXC_CAUSE_TASK_EXIT     18
++
++/**
++ * @ingroup los_exc
++ * Cortex-M exception types: A fatal error.
++ */
++#define OS_EXC_CAUSE_FATAL_ERR     19
++
++/**
++ * @ingroup los_exc
++ * Cortex-M exception types: Hard Fault caused by a debug event.
++ */
++#define OS_EXC_CAUSE_DEBUGEVT      20
++
++/**
++ * @ingroup los_exc
++ * Cortex-M exception types: A hard fault that occurs when a quantity is oriented.
++ */
++#define OS_EXC_CAUSE_VECTBL        21
++
++/**
++ * @ingroup los_exc
++ * Exception information structure
++ *
++ * Description: Exception information saved when an exception is triggered on the Cortex-M4 platform.
++ *
++ */
++typedef struct TagExcInfo {
++    /**< Exception occurrence phase: 0 means that an exception occurs in initialization,
++     * 1 means that an exception occurs in a task, and 2 means that an exception occurs in an interrupt */
++    UINT16 phase;
++    /**< Exception type. When exceptions occur, check the numbers 1 - 21 listed above */
++    UINT16 type;
++    /**< If the exact address access error indicates the wrong access address when the exception occurred */
++    UINT32 faultAddr;
++    /**< An exception occurs in an interrupt, indicating the interrupt number.
++     * An exception occurs in the task, indicating the task ID, or 0xFFFFFFFF if it occurs during initialization */
++    UINT32 thrdPid;
++    /**< Number of nested exceptions. Currently only registered hook functions are supported
++     * when an exception is entered for the first time */
++    UINT16 nestCnt;
++    /**< reserve */
++    UINT16 reserved;
++    /**< Hardware context at the time an exception to the automatic stack floating-point register occurs */
++    EXC_CONTEXT_S *context;
++} ExcInfo;
++
++extern ExcInfo g_excInfo;
++extern UINT32 g_curNestCount;
++extern UINT8 g_uwExcTbl[32];
++
++#define MAX_INT_INFO_SIZE       (8 + 0x164)
++
++#ifdef __cplusplus
++#if __cplusplus
++}
++#endif /* __cplusplus */
++#endif /* __cplusplus */
++
++#endif /* _LOS_ARCH_INTERRUPT_H */
+diff --git a/arch/arm/cortex-m3/gcc/los_arch_timer.h b/arch/arm/cortex-m3/gcc/los_arch_timer.h
+new file mode 100644
+index 00000000..2b2c41f9
+--- /dev/null
++++ b/arch/arm/cortex-m3/gcc/los_arch_timer.h
+@@ -0,0 +1,51 @@
++/*
++ * Copyright (c) 2013-2019 Huawei Technologies Co., Ltd. All rights reserved.
++ * Copyright (c) 2020-2021 Huawei Device Co., Ltd. All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without modification,
++ * are permitted provided that the following conditions are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright notice, this list of
++ *    conditions and the following disclaimer.
++ *
++ * 2. Redistributions in binary form must reproduce the above copyright notice, this list
++ *    of conditions and the following disclaimer in the documentation and/or other materials
++ *    provided with the distribution.
++ *
++ * 3. Neither the name of the copyright holder nor the names of its contributors may be used
++ *    to endorse or promote products derived from this software without specific prior written
++ *    permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
++ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
++ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
++ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
++ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
++ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
++ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
++ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
++ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#ifndef _LOS_ARCH_TIMER_H
++#define _LOS_ARCH_TIMER_H
++
++#include "los_config.h"
++#include "los_compiler.h"
++#include "los_timer.h"
++
++#ifdef __cplusplus
++#if __cplusplus
++extern "C" {
++#endif /* __cplusplus */
++#endif /* __cplusplus */
++
++#ifdef __cplusplus
++#if __cplusplus
++}
++#endif /* __cplusplus */
++#endif /* __cplusplus */
++
++#endif /* _LOS_ARCH_TIMER_H */
+diff --git a/arch/arm/cortex-m3/gcc/los_context.c b/arch/arm/cortex-m3/gcc/los_context.c
+new file mode 100644
+index 00000000..b10e3b56
+--- /dev/null
++++ b/arch/arm/cortex-m3/gcc/los_context.c
+@@ -0,0 +1,167 @@
++/*
++ * Copyright (c) 2013-2019 Huawei Technologies Co., Ltd. All rights reserved.
++ * Copyright (c) 2020-2021 Huawei Device Co., Ltd. All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without modification,
++ * are permitted provided that the following conditions are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright notice, this list of
++ *    conditions and the following disclaimer.
++ *
++ * 2. Redistributions in binary form must reproduce the above copyright notice, this list
++ *    of conditions and the following disclaimer in the documentation and/or other materials
++ *    provided with the distribution.
++ *
++ * 3. Neither the name of the copyright holder nor the names of its contributors may be used
++ *    to endorse or promote products derived from this software without specific prior written
++ *    permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
++ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
++ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
++ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
++ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
++ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
++ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
++ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
++ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#include "los_context.h"
++#include "securec.h"
++#include "los_arch_context.h"
++#include "los_arch_interrupt.h"
++#include "los_task.h"
++#include "los_sched.h"
++#include "los_interrupt.h"
++
++/* ****************************************************************************
++ Function    : ArchInit
++ Description : arch init function
++ Input       : None
++ Output      : None
++ Return      : None
++ **************************************************************************** */
++LITE_OS_SEC_TEXT_INIT VOID ArchInit(VOID)
++{
++    HalHwiInit();
++}
++
++/* ****************************************************************************
++ Function    : ArchSysExit
++ Description : Task exit function
++ Input       : None
++ Output      : None
++ Return      : None
++ **************************************************************************** */
++LITE_OS_SEC_TEXT_MINOR VOID ArchSysExit(VOID)
++{
++    (VOID)LOS_IntLock();
++    while (1) {
++    }
++}
++
++/* ****************************************************************************
++ Function    : ArchTskStackInit
++ Description : Task stack initialization function
++ Input       : taskID     --- TaskID
++               stackSize  --- Total size of the stack
++               topStack   --- Top of task's stack
++ Output      : None
++ Return      : Context pointer
++ **************************************************************************** */
++LITE_OS_SEC_TEXT_INIT VOID *ArchTskStackInit(UINT32 taskID, UINT32 stackSize, VOID *topStack)
++{
++    TaskContext *context = (TaskContext *)((UINTPTR)topStack + stackSize - sizeof(TaskContext));
++
++#if ((defined(__FPU_PRESENT) && (__FPU_PRESENT == 1U)) && \
++     (defined(__FPU_USED) && (__FPU_USED == 1U)))
++    context->S16 = 0xAA000010;
++    context->S17 = 0xAA000011;
++    context->S18 = 0xAA000012;
++    context->S19 = 0xAA000013;
++    context->S20 = 0xAA000014;
++    context->S21 = 0xAA000015;
++    context->S22 = 0xAA000016;
++    context->S23 = 0xAA000017;
++    context->S24 = 0xAA000018;
++    context->S25 = 0xAA000019;
++    context->S26 = 0xAA00001A;
++    context->S27 = 0xAA00001B;
++    context->S28 = 0xAA00001C;
++    context->S29 = 0xAA00001D;
++    context->S30 = 0xAA00001E;
++    context->S31 = 0xAA00001F;
++    context->S0 = 0xAA000000;
++    context->S1 = 0xAA000001;
++    context->S2 = 0xAA000002;
++    context->S3 = 0xAA000003;
++    context->S4 = 0xAA000004;
++    context->S5 = 0xAA000005;
++    context->S6 = 0xAA000006;
++    context->S7 = 0xAA000007;
++    context->S8 = 0xAA000008;
++    context->S9 = 0xAA000009;
++    context->S10 = 0xAA00000A;
++    context->S11 = 0xAA00000B;
++    context->S12 = 0xAA00000C;
++    context->S13 = 0xAA00000D;
++    context->S14 = 0xAA00000E;
++    context->S15 = 0xAA00000F;
++    context->FPSCR = 0x00000000;
++    context->NO_NAME = 0xAA000011;
++#endif
++
++    context->uwR4 = 0x04040404L;
++    context->uwR5 = 0x05050505L;
++    context->uwR6 = 0x06060606L;
++    context->uwR7 = 0x07070707L;
++    context->uwR8 = 0x08080808L;
++    context->uwR9 = 0x09090909L;
++    context->uwR10 = 0x10101010L;
++    context->uwR11 = 0x11111111L;
++    context->uwPriMask = 0;
++    context->uwR0 = taskID;
++    context->uwR1 = 0x01010101L;
++    context->uwR2 = 0x02020202L;
++    context->uwR3 = 0x03030303L;
++    context->uwR12 = 0x12121212L;
++    context->uwLR = (UINT32)(UINTPTR)ArchSysExit;
++    context->uwPC = (UINT32)(UINTPTR)OsTaskEntry;
++    context->uwxPSR = 0x01000000L;
++
++    return (VOID *)context;
++}
++
++VOID *ArchSignalContextInit(VOID *stackPointer, VOID *stackTop, UINTPTR sigHandler, UINT32 param)
++{
++    UNUSED(stackTop);
++    TaskContext *context = (TaskContext *)((UINTPTR)stackPointer - sizeof(TaskContext));
++    (VOID)memset_s((VOID *)context, sizeof(TaskContext), 0, sizeof(TaskContext));
++
++    context->uwR0 = param;
++    context->uwPC = sigHandler;
++    context->uwxPSR = 0x01000000L; /* Thumb flag, always set 1 */
++
++    return (VOID *)context;
++}
++
++#if (LOSCFG_SECURE == 1)
++VOID HalUserTaskStackInit(TaskContext *context, UINTPTR taskEntry, UINTPTR stack)
++{
++    context->uwR0 = stack;
++    context->uwPC = (UINT32)taskEntry;
++    context->uwxPSR = 0x01000000L; /* Thumb flag, always set 1 */
++}
++#endif
++
++LITE_OS_SEC_TEXT_INIT UINT32 ArchStartSchedule(VOID)
++{
++    (VOID)LOS_IntLock();
++    OsSchedStart();
++    HalStartToRun();
++    return LOS_OK; /* never return */
++}
++
+diff --git a/arch/arm/cortex-m3/gcc/los_dispatch.S b/arch/arm/cortex-m3/gcc/los_dispatch.S
+new file mode 100644
+index 00000000..64c41a24
+--- /dev/null
++++ b/arch/arm/cortex-m3/gcc/los_dispatch.S
+@@ -0,0 +1,217 @@
++/*
++ * Copyright (c) 2013-2019 Huawei Technologies Co., Ltd. All rights reserved.
++ * Copyright (c) 2020-2022 Huawei Device Co., Ltd. All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without modification,
++ * are permitted provided that the following conditions are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright notice, this list of
++ *    conditions and the following disclaimer.
++ *
++ * 2. Redistributions in binary form must reproduce the above copyright notice, this list
++ *    of conditions and the following disclaimer in the documentation and/or other materials
++ *    provided with the distribution.
++ *
++ * 3. Neither the name of the copyright holder nor the names of its contributors may be used
++ *    to endorse or promote products derived from this software without specific prior written
++ *    permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
++ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
++ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
++ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
++ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
++ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
++ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
++ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
++ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++.syntax unified
++.arch armv7e-m
++.fpu fpv4-sp-d16
++.thumb
++
++.equ    OS_FPU_CPACR,                0xE000ED88
++.equ    OS_FPU_CPACR_ENABLE,         0x00F00000
++.equ    OS_NVIC_INT_CTRL,            0xE000ED04
++.equ    OS_NVIC_SYSPRI2,             0xE000ED20
++.equ    OS_NVIC_PENDSV_PRI,          0xF0F00000
++.equ    OS_NVIC_PENDSVSET,           0x10000000
++.equ    OS_TASK_STATUS_RUNNING,      0x0010
++.equ    OS_CONTROL_FPCA_ENABLE,      0x4
++.equ    OS_CONTROL_KERNEL_MODE,      0x2
++#if (LOSCFG_SECURE == 1)
++.equ    OS_CONTROL_USER_MODE,        0x3
++.equ    OS_TASK_FLAG_USER_TASK,      0x0200
++#endif
++
++    .section .text
++    .thumb
++
++.macro SIGNAL_CONTEXT_RESTORE
++    push    {r12, lr}
++    blx     OsSignalTaskContextRestore
++    pop     {r12, lr}
++    cmp     r0, #0
++    mov     r1, r0
++    bne     SignalContextRestore
++.endm
++
++    .type HalStartToRun, %function
++    .global HalStartToRun
++HalStartToRun:
++    .fnstart
++    .cantunwind
++
++    ldr     r4, =OS_NVIC_SYSPRI2
++    ldr     r5, =OS_NVIC_PENDSV_PRI
++    str     r5, [r4]
++
++    mov     r0, #OS_CONTROL_KERNEL_MODE
++    msr     CONTROL, r0
++
++    ldr     r1, =g_losTask
++    ldr     r0, [r1, #4]
++    ldr     r12, [r0]
++
++    ldr.w   r1, =OS_FPU_CPACR
++    ldr     r1, [r1]
++    and     r1, r1, #OS_FPU_CPACR_ENABLE
++    cmp     r1, #OS_FPU_CPACR_ENABLE
++    bne     __DisabledFPU
++    add     r12, r12, #100
++
++    ldmfd   r12!, {R0-R7}
++    add     r12, r12, #72
++    msr     psp, r12
++    vpush   {s0}
++    vpop    {s0}
++    mov     lr, r5
++    cpsie   i
++    bx      r6
++
++__DisabledFPU:
++    add     r12, r12, #36
++
++    ldmfd   r12!, {r0-r7}
++    msr     psp, r12
++    mov     lr, r5
++    cpsie   I
++    bx      r6
++
++    .fnend
++
++    .type ArchIntLock, %function
++    .global ArchIntLock
++ArchIntLock:
++    .fnstart
++    .cantunwind
++
++    MRS R0, PRIMASK
++    CPSID I
++    BX LR
++    .fnend
++
++    .type ArchIntUnLock, %function
++    .global ArchIntUnLock
++ArchIntUnLock:
++    .fnstart
++    .cantunwind
++
++    MRS R0, PRIMASK
++    CPSIE I
++    BX LR
++    .fnend
++
++    .type ArchIntRestore, %function
++    .global ArchIntRestore
++ArchIntRestore:
++    .fnstart
++    .cantunwind
++
++    MSR PRIMASK, R0
++    BX LR
++    .fnend
++
++    .type ArchTaskSchedule, %function
++    .global ArchTaskSchedule
++ArchTaskSchedule:
++    .fnstart
++    .cantunwind
++
++    ldr     r0, =OS_NVIC_INT_CTRL
++    ldr     r1, =OS_NVIC_PENDSVSET
++    str     r1, [r0]
++    bx      lr
++    dsb
++    isb
++    .fnend
++
++    .type HalPendSV, %function
++    .global HalPendSV
++HalPendSV:
++    .fnstart
++    .cantunwind
++
++    mrs     r12, PRIMASK
++    cpsid   I
++
++HalTaskSwitch:
++    SIGNAL_CONTEXT_RESTORE
++
++    push    {r12, lr}
++    blx     OsSchedTaskSwitch
++    pop     {r12, lr}
++    cmp     r0, #0
++    mov     r0, lr
++    bne     TaskContextSwitch
++    msr     PRIMASK, r12
++    bx      lr
++
++TaskContextSwitch:
++    mov     lr, r0
++    mrs     r0, psp
++
++    stmfd   r0!, {r4-r12}
++    ldr.w   r3, =OS_FPU_CPACR
++    ldr     r3, [r3]
++    and     r3, r3, #OS_FPU_CPACR_ENABLE
++    cmp     r3, #OS_FPU_CPACR_ENABLE
++    bne     __DisabledFPU1
++    vstmdb  r0!, {d8-d15}
++
++__DisabledFPU1:
++    ldr     r5, =g_losTask
++    ldr     r6, [r5]
++    str     r0, [r6]
++
++    ldr     r0, [r5, #4]
++    str     r0, [r5]
++    ldr     r1, [r0]
++
++SignalContextRestore:
++    ldr.w   r3, =OS_FPU_CPACR
++    ldr     r3, [r3]
++    and     r3, r3, #OS_FPU_CPACR_ENABLE
++    cmp     r3, #OS_FPU_CPACR_ENABLE
++    bne     __DisabledFPU2
++    vldmia  r1!, {d8-d15}
++
++__DisabledFPU2:
++#if (LOSCFG_SECURE == 1)
++    ldrh    r7, [r0, #4]
++    tst     r7, #OS_TASK_FLAG_USER_TASK
++    ite     eq
++    moveq   r3, #OS_CONTROL_KERNEL_MODE
++    movne   r3, #OS_CONTROL_USER_MODE
++    msr     CONTROL, r3
++#endif
++    ldmfd   r1!, {r4-r12}
++    msr     psp,  r1
++
++    msr     PRIMASK, r12
++
++    bx      lr
++    .fnend
+diff --git a/arch/arm/cortex-m3/gcc/los_exc.S b/arch/arm/cortex-m3/gcc/los_exc.S
+new file mode 100644
+index 00000000..c41d84db
+--- /dev/null
++++ b/arch/arm/cortex-m3/gcc/los_exc.S
+@@ -0,0 +1,398 @@
++/*
++ * Copyright (c) 2013-2019 Huawei Technologies Co., Ltd. All rights reserved.
++ * Copyright (c) 2020-2022 Huawei Device Co., Ltd. All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without modification,
++ * are permitted provided that the following conditions are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright notice, this list of
++ *    conditions and the following disclaimer.
++ *
++ * 2. Redistributions in binary form must reproduce the above copyright notice, this list
++ *    of conditions and the following disclaimer in the documentation and/or other materials
++ *    provided with the distribution.
++ *
++ * 3. Neither the name of the copyright holder nor the names of its contributors may be used
++ *    to endorse or promote products derived from this software without specific prior written
++ *    permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
++ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
++ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
++ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
++ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
++ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
++ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
++ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
++ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++.syntax unified
++.arch armv7e-m
++.fpu fpv4-sp-d16
++.thumb
++.section .text
++
++
++    .global  HalExcNMI
++    .global  HalExcHardFault
++    .global  HalExcMemFault
++    .global  HalExcBusFault
++    .global  HalExcUsageFault
++    .global  HalExcSvcCall
++
++    .extern HalExcHandleEntry
++    .extern g_uwExcTbl
++    .extern g_taskScheduled
++
++.equ OS_FLG_BGD_ACTIVE,   0x0002
++
++.equ OS_EXC_CAUSE_NMI,   16
++.equ OS_EXC_CAUSE_HARDFAULT,   17
++
++.equ HF_DEBUGEVT,   20
++.equ HF_VECTBL,   21
++
++.equ FLAG_ADDR_VALID,   0x10000
++.equ FLAG_HWI_ACTIVE,   0x20000
++.equ FLAG_NO_FLOAT,     0x10000000
++
++.equ OS_NVIC_FSR,           0xE000ED28      //include BusFault/MemFault/UsageFault State Register
++.equ OS_NVIC_HFSR,          0xE000ED2C      //HardFault State Register
++.equ OS_NVIC_BFAR,          0xE000ED38
++.equ OS_NVIC_MMAR,          0xE000ED34
++.equ OS_NVIC_ACT_BASE,      0xE000E300
++.equ OS_NVIC_SHCSRS,        0xE000ED24
++.equ OS_NVIC_SHCSR_MASK,    0xC00
++
++    .type HalExcNMI, %function
++    .global HalExcNMI
++HalExcNMI:
++    .fnstart
++    .cantunwind
++    MOV  R0, #OS_EXC_CAUSE_NMI
++    MOV  R1, #0
++    B  osExcDispatch
++    .fnend
++
++    .type HalExcHardFault, %function
++    .global HalExcHardFault
++HalExcHardFault:
++    .fnstart
++    .cantunwind
++    MOV  R0, #OS_EXC_CAUSE_HARDFAULT
++    LDR  R2, =OS_NVIC_HFSR
++    LDR  R2, [R2]
++
++    MOV  R1, #HF_DEBUGEVT
++    ORR  R0, R0, R1, LSL #0x8
++    TST  R2, #0x80000000
++    BNE  osExcDispatch     // DEBUGEVT
++
++    AND  R0, R0 , #0x000000FF
++    MOV  R1, #HF_VECTBL
++    ORR  R0, R0, R1, LSL #0x8
++    TST  R2, #0x00000002
++    BNE  osExcDispatch     // VECTBL
++
++    //if not DEBUGEVT and VECTBL then is FORCED
++    AND  R0, R0, #0x000000FF
++
++    LDR  R2, =OS_NVIC_FSR
++    LDR  R2, [R2]
++
++    TST  R2, #0x8000     // BFARVALID
++    BNE  _HFBusFault     // BusFault
++
++    TST  R2, #0x80       // MMARVALID
++    BNE  _HFMemFault     // MemFault
++
++    MOV  R12,#0
++    B    osHFExcCommonBMU
++    .fnend
++
++    .type _HFBusFault, %function
++
++_HFBusFault:
++    .fnstart
++    .cantunwind
++    LDR  R1, =OS_NVIC_BFAR
++    LDR  R1, [R1]
++    MOV  R12, #FLAG_ADDR_VALID
++    B    osHFExcCommonBMU
++    .fnend
++
++    .type _HFMemFault, %function
++
++_HFMemFault:
++    .fnstart
++    .cantunwind
++    LDR  R1, =OS_NVIC_MMAR
++    LDR  R1, [R1]
++    MOV  R12, #FLAG_ADDR_VALID
++    .fnend
++
++    .type osHFExcCommonBMU, %function
++    .global osHFExcCommonBMU
++osHFExcCommonBMU:
++    .fnstart
++    .cantunwind
++    CLZ  R2, R2
++    LDR  R3, =g_uwExcTbl
++    ADD  R3, R3, R2
++    LDRB R2, [R3]
++    ORR  R0, R0, R2, LSL #0x8
++    ORR  R0, R0 ,R12
++    B    osExcDispatch
++    .fnend
++
++    .type HalExcSvcCall, %function
++    .global HalExcSvcCall
++HalExcSvcCall:
++    .fnstart
++    .cantunwind
++    TST   LR, #0x4
++    ITE   EQ
++    MRSEQ R1, MSP
++    BNE   _svcCallFromPsp
++    B     _svcCall
++_svcCallFromPsp:
++#ifdef LOSCFG_SECURE
++    PUSH  {R0-R12, LR}
++    MOV   R0, SP
++    CPSIE I
++    BL    OsSyscallHandle
++    CPSID I
++    MRS   R12, PSP
++    STM   R12, {R0-R1}
++    POP   {R0-R12, LR}
++    BX    LR
++#endif
++    MRS   R1, PSP
++_svcCall:
++    LDR   R0, [R1,#24]
++    LDRB  R0, [R0,#-2]
++    MOV   R1, #0
++    B     osExcDispatch
++    .fnend
++
++    .type HalExcBusFault, %function
++    .global HalExcBusFault
++HalExcBusFault:
++    .fnstart
++    .cantunwind
++    LDR  R0, =OS_NVIC_FSR
++    LDR  R0, [R0]
++
++    TST  R0, #0x8000  // BFARVALID
++    BEQ  _ExcBusNoADDR
++    LDR  R1, =OS_NVIC_BFAR
++    LDR  R1, [R1]
++    MOV  R12, #FLAG_ADDR_VALID
++    AND  R0, R0, #0x1F00
++
++    B    osExcCommonBMU
++    .fnend
++
++    .type _ExcBusNoADDR, %function
++    .global _ExcBusNoADDR
++_ExcBusNoADDR:
++    .fnstart
++    .cantunwind
++    MOV  R12,#0
++    B    osExcCommonBMU
++    .fnend
++
++    .type HalExcMemFault, %function
++    .global HalExcMemFault
++HalExcMemFault:
++    .fnstart
++    .cantunwind
++    LDR  R0, =OS_NVIC_FSR
++    LDR  R0, [R0]
++
++    TST  R0, #0x80 // MMARVALID
++    BEQ  _ExcMemNoADDR
++    LDR  R1, =OS_NVIC_MMAR
++    LDR  R1, [R1]
++    MOV  R12, #FLAG_ADDR_VALID
++    AND  R0, R0, #0x1B
++
++    B    osExcCommonBMU
++    .fnend
++
++    .type _ExcMemNoADDR, %function
++    .global _ExcMemNoADDR
++_ExcMemNoADDR:
++    .fnstart
++    .cantunwind
++    MOV  R12,#0
++    B    osExcCommonBMU
++    .fnend
++
++    .type HalExcUsageFault, %function
++    .global HalExcUsageFault
++HalExcUsageFault:
++    .fnstart
++    .cantunwind
++    LDR  R0, =OS_NVIC_FSR
++    LDR  R0, [R0]
++
++    MOVW R1, #0x030F
++    LSL  R1, R1, #16
++    AND  R0, R0, R1
++    MOV  R12, #0
++
++    .fnend
++
++    .type osExcCommonBMU, %function
++    .global osExcCommonBMU
++osExcCommonBMU:
++    .fnstart
++    .cantunwind
++    CLZ  R0, R0
++    LDR  R3, =g_uwExcTbl
++    ADD  R3, R3, R0
++    LDRB R0, [R3]
++    ORR  R0, R0, R12
++    .fnend
++// R0 -- EXCCAUSE(bit 16 is 1 if EXCADDR valid),  R1 -- EXCADDR
++
++    .type osExcDispatch, %function
++    .global osExcDispatch
++osExcDispatch:
++    .fnstart
++    .cantunwind
++    LDR   R2, =OS_NVIC_ACT_BASE
++    MOV   R12, #8                       // R12 is hwi check loop counter
++    .fnend
++
++    .type _hwiActiveCheck, %function
++    .global _hwiActiveCheck
++_hwiActiveCheck:
++    .fnstart
++    .cantunwind
++    LDR   R3, [R2]                      // R3 store active hwi register when exc
++    CMP   R3, #0
++    BEQ   _hwiActiveCheckNext
++
++    // exc occurred in IRQ
++    ORR   R0, R0, #FLAG_HWI_ACTIVE
++    RBIT  R2, R3
++    CLZ   R2, R2
++    AND   R12, R12, #1
++    ADD   R2, R2, R12, LSL #5               // calculate R2 (hwi number) as pid
++    .fnend
++
++    .type _ExcInMSP, %function
++    .global _ExcInMSP
++_ExcInMSP:
++    .fnstart
++    .cantunwind
++    CMP   LR, #0xFFFFFFE9
++    BNE   _NoFloatInMsp
++    ADD   R3, R13, #104
++    PUSH  {R3}
++    MRS   R12, PRIMASK                  // store message-->exc: disable int?
++    PUSH {R4-R12}                       // store message-->exc: {R4-R12}
++    VPUSH {D8-D15}                      // FPU
++    B     _handleEntry
++    .fnend
++
++    .type _NoFloatInMsp, %function
++    .global _NoFloatInMsp
++_NoFloatInMsp:
++    .fnstart
++    .cantunwind
++    ADD   R3, R13, #32
++    PUSH  {R3}                           // store message-->exc: MSP(R13)
++
++    MRS   R12, PRIMASK                   // store message-->exc: disable int?
++    PUSH {R4-R12}                        // store message-->exc: {R4-R12}
++    ORR   R0, R0, #FLAG_NO_FLOAT
++    B     _handleEntry
++    .fnend
++
++    .type _hwiActiveCheckNext, %function
++    .global _hwiActiveCheckNext
++_hwiActiveCheckNext:
++    .fnstart
++    .cantunwind
++    ADD   R2, R2, #4                        // next NVIC ACT ADDR
++    SUBS  R12, R12, #1
++    BNE   _hwiActiveCheck
++
++    /*NMI interrupt excption*/
++    LDR   R2, =OS_NVIC_SHCSRS
++    LDRH  R2,[R2]
++    LDR   R3,=OS_NVIC_SHCSR_MASK
++    AND   R2, R2,R3
++    CMP   R2,#0
++    BNE   _ExcInMSP
++    // exc occurred in Task or Init or exc
++    // reserved for register info from task stack
++
++    LDR  R2, =g_taskScheduled
++    LDR  R2, [R2]
++    TST  R2, #1                         // OS_FLG_BGD_ACTIVE
++    BEQ  _ExcInMSP                      // if exc occurred in Init then branch
++
++
++    CMP   LR, #0xFFFFFFED               //auto push floating registers
++    BNE   _NoFloatInPsp
++
++    // exc occurred in Task
++    MOV   R2,  R13
++    SUB   R13, #96                      // add 8 Bytes reg(for STMFD)
++
++    MRS   R3,  PSP
++    ADD   R12, R3, #104
++    PUSH  {R12}                         // save task SP
++
++    MRS   R12, PRIMASK
++    PUSH {R4-R12}
++    VPUSH {D8-D15}                      // FPU
++
++    // copy auto saved task register
++
++    LDMFD R3!, {R4-R11}                 // R4-R11 store PSP reg(auto push when exc in task)
++    VLDMIA  R3!, {D8-D15}               // FPU
++    VSTMDB  R2!, {D8-D15}               // FPU
++    STMFD R2!, {R4-R11}
++    B     _handleEntry
++    .fnend
++
++    .type _NoFloatInPsp, %function
++    .global _NoFloatInPsp
++_NoFloatInPsp:
++    .fnstart
++    .cantunwind
++    MOV   R2,  R13                      // no auto push floating registers
++    SUB   R13, #32                      // add 8 Bytes reg(for STMFD)
++
++    MRS   R3,  PSP
++    ADD   R12, R3, #32
++    PUSH  {R12}                         // save task SP
++
++    MRS   R12, PRIMASK
++    PUSH {R4-R12}
++
++    LDMFD R3, {R4-R11}                  // R4-R11 store PSP reg(auto push when exc in task)
++    STMFD R2!, {R4-R11}
++    ORR   R0, R0, #FLAG_NO_FLOAT
++    .fnend
++
++    .type _handleEntry, %function
++    .global _handleEntry
++_handleEntry:
++    .fnstart
++    .cantunwind
++    MOV R3, R13                         // R13:the 4th param
++    CPSID I
++    CPSID F
++    B  HalExcHandleEntry
++
++    NOP
++    .fnend
+diff --git a/arch/arm/cortex-m3/gcc/los_interrupt.c b/arch/arm/cortex-m3/gcc/los_interrupt.c
+new file mode 100644
+index 00000000..e5b4a2d8
+--- /dev/null
++++ b/arch/arm/cortex-m3/gcc/los_interrupt.c
+@@ -0,0 +1,447 @@
++/*
++ * Copyright (c) 2013-2019 Huawei Technologies Co., Ltd. All rights reserved.
++ * Copyright (c) 2020-2023 Huawei Device Co., Ltd. All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without modification,
++ * are permitted provided that the following conditions are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright notice, this list of
++ *    conditions and the following disclaimer.
++ *
++ * 2. Redistributions in binary form must reproduce the above copyright notice, this list
++ *    of conditions and the following disclaimer in the documentation and/or other materials
++ *    provided with the distribution.
++ *
++ * 3. Neither the name of the copyright holder nor the names of its contributors may be used
++ *    to endorse or promote products derived from this software without specific prior written
++ *    permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
++ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
++ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
++ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
++ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
++ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
++ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
++ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
++ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#include <stdarg.h>
++#include "securec.h"
++#include "los_context.h"
++#include "los_arch_interrupt.h"
++#include "los_hook.h"
++#include "los_task.h"
++#include "los_sched.h"
++#include "los_memory.h"
++#include "los_membox.h"
++#if (LOSCFG_CPUP_INCLUDE_IRQ == 1)
++#include "los_cpup.h"
++#endif
++
++/* ****************************************************************************
++ Function    : HwiNumGet
++ Description : Get an interrupt number
++ Input       : None
++ Output      : None
++ Return      : Interrupt Indexes number
++ **************************************************************************** */
++STATIC UINT32 HwiNumGet(VOID)
++{
++    return __get_IPSR();
++}
++
++STATIC UINT32 HwiUnmask(HWI_HANDLE_T hwiNum)
++{
++    NVIC_EnableIRQ((IRQn_Type)hwiNum);
++    return LOS_OK;
++}
++
++STATIC UINT32 HwiMask(HWI_HANDLE_T hwiNum)
++{
++    NVIC_DisableIRQ((IRQn_Type)hwiNum);
++    return LOS_OK;
++}
++
++STATIC UINT32 HwiSetPriority(HWI_HANDLE_T hwiNum, UINT8 priority)
++{
++    NVIC_SetPriority((IRQn_Type)hwiNum, priority);
++    return LOS_OK;
++}
++
++STATIC UINT32 HwiPending(HWI_HANDLE_T hwiNum)
++{
++    NVIC_SetPendingIRQ((IRQn_Type)hwiNum);
++    return LOS_OK;
++}
++
++STATIC UINT32 HwiClear(HWI_HANDLE_T hwiNum)
++{
++    NVIC_ClearPendingIRQ((IRQn_Type)hwiNum);
++    return LOS_OK;
++}
++
++STATIC UINT32 HwiCreate(HWI_HANDLE_T hwiNum, HWI_PRIOR_T hwiPrio)
++{
++    HwiSetPriority(hwiNum, hwiPrio);
++    HwiUnmask(hwiNum);
++    return LOS_OK;
++}
++
++STATIC HwiControllerOps g_archHwiOps = {
++    .enableIrq      = HwiUnmask,
++    .disableIrq     = HwiMask,
++    .setIrqPriority = HwiSetPriority,
++    .getCurIrqNum   = HwiNumGet,
++    .triggerIrq     = HwiPending,
++    .clearIrq       = HwiClear,
++    .createIrq      = HwiCreate,
++};
++
++HwiControllerOps *ArchIntOpsGet(VOID)
++{
++    return &g_archHwiOps;
++}
++
++/* ****************************************************************************
++ Function    : HalInterrupt
++ Description : Hardware interrupt entry function
++ Input       : None
++ Output      : None
++ Return      : None
++ **************************************************************************** */
++LITE_OS_SEC_TEXT VOID HalInterrupt(VOID)
++{
++    UINT32 hwiIndex;
++    UINT32 intSave;
++
++#if (LOSCFG_KERNEL_RUNSTOP == 1)
++    SCB->SCR &= (UINT32) ~((UINT32)SCB_SCR_SLEEPDEEP_Msk);
++#endif
++
++    intSave = LOS_IntLock();
++    g_intCount++;
++    LOS_IntRestore(intSave);
++
++    hwiIndex = HwiNumGet();
++
++    OsHookCall(LOS_HOOK_TYPE_ISR_ENTER, hwiIndex);
++#if (LOSCFG_CPUP_INCLUDE_IRQ == 1)
++    OsCpupIrqStart(hwiIndex);
++#endif
++
++    HalPreInterruptHandler(hwiIndex);
++
++#if (LOSCFG_PLATFORM_HWI_WITH_ARG == 1)
++    if (g_hwiHandlerForm[hwiIndex].pfnHandler != 0) {
++        g_hwiHandlerForm[hwiIndex].pfnHandler((VOID *)g_hwiHandlerForm[hwiIndex].pParm);
++    }
++#else
++    if (g_hwiHandlerForm[hwiIndex] != 0) {
++        g_hwiHandlerForm[hwiIndex]();
++    }
++#endif
++
++#if (LOSCFG_DEBUG_TOOLS == 1)
++    ++g_hwiFormCnt[hwiIndex];
++#endif
++
++    HalAftInterruptHandler(hwiIndex);
++
++#if (LOSCFG_CPUP_INCLUDE_IRQ == 1)
++    OsCpupIrqEnd(hwiIndex);
++#endif
++
++    OsHookCall(LOS_HOOK_TYPE_ISR_EXIT, hwiIndex);
++
++    intSave = LOS_IntLock();
++    g_intCount--;
++    LOS_IntRestore(intSave);
++}
++
++#define FAULT_STATUS_REG_BIT            32
++#define USGFAULT                        (1 << 18)
++#define BUSFAULT                        (1 << 17)
++#define MEMFAULT                        (1 << 16)
++#define DIV0FAULT                       (1 << 4)
++#define UNALIGNFAULT                    (1 << 3)
++#define HARDFAULT_IRQN                  (-13)
++
++ExcInfo g_excInfo = {0};
++
++UINT8 g_uwExcTbl[FAULT_STATUS_REG_BIT] = {
++    0, 0, 0, 0, 0, 0, OS_EXC_UF_DIVBYZERO, OS_EXC_UF_UNALIGNED,
++    0, 0, 0, 0, OS_EXC_UF_NOCP, OS_EXC_UF_INVPC, OS_EXC_UF_INVSTATE, OS_EXC_UF_UNDEFINSTR,
++    0, 0, 0, OS_EXC_BF_STKERR, OS_EXC_BF_UNSTKERR, OS_EXC_BF_IMPRECISERR, OS_EXC_BF_PRECISERR, OS_EXC_BF_IBUSERR,
++    0, 0, 0, OS_EXC_MF_MSTKERR, OS_EXC_MF_MUNSTKERR, 0, OS_EXC_MF_DACCVIOL, OS_EXC_MF_IACCVIOL
++};
++
++#if (LOSCFG_KERNEL_PRINTF != 0)
++STATIC VOID OsExcNvicDump(VOID)
++{
++#define OS_NR_NVIC_EXC_DUMP_TYPES   7
++    UINT32 *base = NULL;
++    UINT32 len, i, j;
++    UINT32 rgNvicBases[OS_NR_NVIC_EXC_DUMP_TYPES] = {
++        OS_NVIC_SETENA_BASE, OS_NVIC_SETPEND_BASE, OS_NVIC_INT_ACT_BASE,
++        OS_NVIC_PRI_BASE, OS_NVIC_EXCPRI_BASE, OS_NVIC_SHCSR, OS_NVIC_INT_CTRL
++    };
++    UINT32 rgNvicLens[OS_NR_NVIC_EXC_DUMP_TYPES] = {
++        OS_NVIC_INT_ENABLE_SIZE, OS_NVIC_INT_PEND_SIZE, OS_NVIC_INT_ACT_SIZE,
++        OS_NVIC_INT_PRI_SIZE, OS_NVIC_EXCPRI_SIZE, OS_NVIC_SHCSR_SIZE,
++        OS_NVIC_INT_CTRL_SIZE
++    };
++    CHAR strRgEnable[] = "enable";
++    CHAR strRgPending[] = "pending";
++    CHAR strRgActive[] = "active";
++    CHAR strRgPriority[] = "priority";
++    CHAR strRgException[] = "exception";
++    CHAR strRgShcsr[] = "shcsr";
++    CHAR strRgIntCtrl[] = "control";
++    CHAR *strRgs[] = {
++        strRgEnable, strRgPending, strRgActive, strRgPriority,
++        strRgException, strRgShcsr, strRgIntCtrl
++    };
++
++    PRINTK("\r\nOS exception NVIC dump:\n");
++    for (i = 0; i < OS_NR_NVIC_EXC_DUMP_TYPES; i++) {
++        base = (UINT32 *)rgNvicBases[i];
++        len = rgNvicLens[i];
++        PRINTK("interrupt %s register, base address: %p, size: 0x%x\n", strRgs[i], base, len);
++        len = (len >> 2); /* 2: Gets the next register offset */
++        for (j = 0; j < len; j++) {
++            PRINTK("0x%x ", *(base + j));
++            if ((j != 0) && ((j % 16) == 0)) { /* 16: print wrap line */
++                PRINTK("\n");
++            }
++        }
++        PRINTK("\n");
++    }
++}
++
++STATIC VOID OsExcTypeInfo(const ExcInfo *excInfo)
++{
++    CHAR *phaseStr[] = {"exc in init", "exc in task", "exc in hwi"};
++
++    PRINTK("Type      = %d\n", excInfo->type);
++    PRINTK("ThrdPid   = %d\n", excInfo->thrdPid);
++    PRINTK("Phase     = %s\n", phaseStr[excInfo->phase]);
++    PRINTK("FaultAddr = 0x%x\n", excInfo->faultAddr);
++}
++
++STATIC VOID OsExcCurTaskInfo(const ExcInfo *excInfo)
++{
++    PRINTK("Current task info:\n");
++    if (excInfo->phase == OS_EXC_IN_TASK) {
++        LosTaskCB *taskCB = OS_TCB_FROM_TID(LOS_CurTaskIDGet());
++        PRINTK("Task name = %s\n", taskCB->taskName);
++        PRINTK("Task ID   = %d\n", taskCB->taskID);
++        PRINTK("Task SP   = %p\n", taskCB->stackPointer);
++        PRINTK("Task ST   = 0x%x\n", taskCB->topOfStack);
++        PRINTK("Task SS   = 0x%x\n", taskCB->stackSize);
++    } else if (excInfo->phase == OS_EXC_IN_HWI) {
++        PRINTK("Exception occur in interrupt phase!\n");
++    } else {
++        PRINTK("Exception occur in system init phase!\n");
++    }
++}
++
++STATIC VOID OsExcRegInfo(const ExcInfo *excInfo)
++{
++    PRINTK("Exception reg dump:\n");
++    PRINTK("PC        = 0x%x\n", excInfo->context->uwPC);
++    PRINTK("LR        = 0x%x\n", excInfo->context->uwLR);
++    PRINTK("SP        = 0x%x\n", excInfo->context->uwSP);
++    PRINTK("R0        = 0x%x\n", excInfo->context->uwR0);
++    PRINTK("R1        = 0x%x\n", excInfo->context->uwR1);
++    PRINTK("R2        = 0x%x\n", excInfo->context->uwR2);
++    PRINTK("R3        = 0x%x\n", excInfo->context->uwR3);
++    PRINTK("R4        = 0x%x\n", excInfo->context->uwR4);
++    PRINTK("R5        = 0x%x\n", excInfo->context->uwR5);
++    PRINTK("R6        = 0x%x\n", excInfo->context->uwR6);
++    PRINTK("R7        = 0x%x\n", excInfo->context->uwR7);
++    PRINTK("R8        = 0x%x\n", excInfo->context->uwR8);
++    PRINTK("R9        = 0x%x\n", excInfo->context->uwR9);
++    PRINTK("R10       = 0x%x\n", excInfo->context->uwR10);
++    PRINTK("R11       = 0x%x\n", excInfo->context->uwR11);
++    PRINTK("R12       = 0x%x\n", excInfo->context->uwR12);
++    PRINTK("PriMask   = 0x%x\n", excInfo->context->uwPriMask);
++    PRINTK("xPSR      = 0x%x\n", excInfo->context->uwxPSR);
++}
++
++#if (LOSCFG_KERNEL_BACKTRACE == 1)
++STATIC VOID OsExcBackTraceInfo(const ExcInfo *excInfo)
++{
++    UINTPTR LR[LOSCFG_BACKTRACE_DEPTH] = {0};
++    UINT32 index;
++
++    OsBackTraceHookCall(LR, LOSCFG_BACKTRACE_DEPTH, 0, excInfo->context->uwSP);
++
++    PRINTK("----- backtrace start -----\n");
++    for (index = 0; index < LOSCFG_BACKTRACE_DEPTH; index++) {
++        if (LR[index] == 0) {
++            break;
++        }
++        PRINTK("backtrace %d -- lr = 0x%x\n", index, LR[index]);
++    }
++    PRINTK("----- backtrace end -----\n");
++}
++#endif
++
++STATIC VOID OsExcMemPoolCheckInfo(VOID)
++{
++    PRINTK("\r\nmemory pools check:\n");
++#if (LOSCFG_PLATFORM_EXC == 1)
++    MemInfoCB memExcInfo[OS_SYS_MEM_NUM];
++    UINT32 errCnt;
++    UINT32 i;
++
++    (VOID)memset_s(memExcInfo, sizeof(memExcInfo), 0, sizeof(memExcInfo));
++
++    errCnt = OsMemExcInfoGet(OS_SYS_MEM_NUM, memExcInfo);
++    if (errCnt < OS_SYS_MEM_NUM) {
++        errCnt += OsMemboxExcInfoGet(OS_SYS_MEM_NUM - errCnt, memExcInfo + errCnt);
++    }
++
++    if (errCnt == 0) {
++        PRINTK("all memory pool check passed!\n");
++        return;
++    }
++
++    for (i = 0; i < errCnt; i++) {
++        PRINTK("pool num    = %d\n", i);
++        PRINTK("pool type   = %d\n", memExcInfo[i].type);
++        PRINTK("pool addr   = 0x%x\n", memExcInfo[i].startAddr);
++        PRINTK("pool size   = 0x%x\n", memExcInfo[i].size);
++        PRINTK("pool free   = 0x%x\n", memExcInfo[i].free);
++        PRINTK("pool blkNum = %d\n", memExcInfo[i].blockSize);
++        PRINTK("pool error node addr  = 0x%x\n", memExcInfo[i].errorAddr);
++        PRINTK("pool error node len   = 0x%x\n", memExcInfo[i].errorLen);
++        PRINTK("pool error node owner = %d\n", memExcInfo[i].errorOwner);
++    }
++#endif
++    UINT32 ret = LOS_MemIntegrityCheck(LOSCFG_SYS_HEAP_ADDR);
++    if (ret == LOS_OK) {
++        PRINTK("system heap memcheck over, all passed!\n");
++    }
++
++    PRINTK("memory pool check end!\n");
++}
++#endif
++
++STATIC VOID OsExcInfoDisplay(const ExcInfo *excInfo)
++{
++#if (LOSCFG_KERNEL_PRINTF != 0)
++    PRINTK("*************Exception Information**************\n");
++    OsExcTypeInfo(excInfo);
++    OsExcCurTaskInfo(excInfo);
++    OsExcRegInfo(excInfo);
++#if (LOSCFG_KERNEL_BACKTRACE == 1)
++    OsExcBackTraceInfo(excInfo);
++#endif
++    OsGetAllTskInfo();
++    OsExcNvicDump();
++    OsExcMemPoolCheckInfo();
++#endif
++}
++
++LITE_OS_SEC_TEXT_INIT VOID HalExcHandleEntry(UINT32 excType, UINT32 faultAddr, UINT32 pid, EXC_CONTEXT_S *excBufAddr)
++{
++    UINT16 tmpFlag = (excType >> 16) & OS_NULL_SHORT; /* 16: Get Exception Type */
++    g_intCount++;
++    g_excInfo.nestCnt++;
++
++    g_excInfo.type = excType & OS_NULL_SHORT;
++
++    if (tmpFlag & OS_EXC_FLAG_FAULTADDR_VALID) {
++        g_excInfo.faultAddr = faultAddr;
++    } else {
++        g_excInfo.faultAddr = OS_EXC_IMPRECISE_ACCESS_ADDR;
++    }
++    if (g_losTask.runTask != NULL) {
++        if (tmpFlag & OS_EXC_FLAG_IN_HWI) {
++            g_excInfo.phase = OS_EXC_IN_HWI;
++            g_excInfo.thrdPid = pid;
++        } else {
++            g_excInfo.phase = OS_EXC_IN_TASK;
++            g_excInfo.thrdPid = g_losTask.runTask->taskID;
++        }
++    } else {
++        g_excInfo.phase = OS_EXC_IN_INIT;
++        g_excInfo.thrdPid = OS_NULL_INT;
++    }
++    if (excType & OS_EXC_FLAG_NO_FLOAT) {
++        g_excInfo.context = (EXC_CONTEXT_S *)((CHAR *)excBufAddr - LOS_OFF_SET_OF(EXC_CONTEXT_S, uwR4));
++    } else {
++        g_excInfo.context = excBufAddr;
++    }
++
++    OsDoExcHook(EXC_INTERRUPT);
++    OsExcInfoDisplay(&g_excInfo);
++    ArchSysExit();
++}
++
++/* stack protector */
++WEAK UINT32 __stack_chk_guard = 0xd00a0dff;
++
++WEAK VOID __stack_chk_fail(VOID)
++{
++    /* __builtin_return_address is a builtin function, building in gcc */
++    LOS_Panic("stack-protector: Kernel stack is corrupted in: %p\n",
++              __builtin_return_address(0));
++}
++
++WEAK VOID SysTick_Handler(VOID)
++{
++    return;
++}
++
++/* ****************************************************************************
++ Function    : HalHwiInit
++ Description : initialization of the hardware interrupt
++ Input       : None
++ Output      : None
++ Return      : None
++ **************************************************************************** */
++LITE_OS_SEC_TEXT_INIT VOID HalHwiInit(VOID)
++{
++#if (LOSCFG_USE_SYSTEM_DEFINED_INTERRUPT == 1)
++    UINT32 index;
++    HWI_PROC_FUNC *hwiForm = (HWI_PROC_FUNC *)ArchGetHwiFrom();
++    hwiForm[0] = 0; /* [0] Top of Stack */
++    hwiForm[1] = (HWI_PROC_FUNC)Reset_Handler; /* [1] reset */
++    for (index = 2; index < OS_VECTOR_CNT; index++) { /* 2: The starting position of the interrupt */
++        hwiForm[index] = (HWI_PROC_FUNC)HalHwiDefaultHandler;
++    }
++    /* Exception handler register */
++    hwiForm[NonMaskableInt_IRQn + OS_SYS_VECTOR_CNT]   = (HWI_PROC_FUNC)HalExcNMI;
++    hwiForm[HARDFAULT_IRQN + OS_SYS_VECTOR_CNT]        = (HWI_PROC_FUNC)HalExcHardFault;
++    hwiForm[MemoryManagement_IRQn + OS_SYS_VECTOR_CNT] = (HWI_PROC_FUNC)HalExcMemFault;
++    hwiForm[BusFault_IRQn + OS_SYS_VECTOR_CNT]         = (HWI_PROC_FUNC)HalExcBusFault;
++    hwiForm[UsageFault_IRQn + OS_SYS_VECTOR_CNT]       = (HWI_PROC_FUNC)HalExcUsageFault;
++    hwiForm[SVCall_IRQn + OS_SYS_VECTOR_CNT]           = (HWI_PROC_FUNC)HalExcSvcCall;
++    hwiForm[PendSV_IRQn + OS_SYS_VECTOR_CNT]           = (HWI_PROC_FUNC)HalPendSV;
++    hwiForm[SysTick_IRQn + OS_SYS_VECTOR_CNT]          = (HWI_PROC_FUNC)SysTick_Handler;
++
++    /* Interrupt vector table location */
++    SCB->VTOR = (UINT32)(UINTPTR)hwiForm;
++#endif
++#if (__CORTEX_M >= 0x03U) /* only for Cortex-M3 and above */
++    NVIC_SetPriorityGrouping(OS_NVIC_AIRCR_PRIGROUP);
++#endif
++
++    /* Enable USGFAULT, BUSFAULT, MEMFAULT */
++    *(volatile UINT32 *)OS_NVIC_SHCSR |= (USGFAULT | BUSFAULT | MEMFAULT);
++
++    /* Enable DIV 0 and unaligned exception */
++#ifdef LOSCFG_ARCH_UNALIGNED_EXC
++    *(volatile UINT32 *)OS_NVIC_CCR |= (DIV0FAULT | UNALIGNFAULT);
++#else
++    *(volatile UINT32 *)OS_NVIC_CCR |= (DIV0FAULT);
++#endif
++
++    return;
++}
+diff --git a/arch/arm/cortex-m3/gcc/los_mpu.c b/arch/arm/cortex-m3/gcc/los_mpu.c
+new file mode 100644
+index 00000000..8d1dc25b
+--- /dev/null
++++ b/arch/arm/cortex-m3/gcc/los_mpu.c
+@@ -0,0 +1,237 @@
++/*
++ * Copyright (c) 2013-2019 Huawei Technologies Co., Ltd. All rights reserved.
++ * Copyright (c) 2020-2021 Huawei Device Co., Ltd. All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without modification,
++ * are permitted provided that the following conditions are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright notice, this list of
++ *    conditions and the following disclaimer.
++ *
++ * 2. Redistributions in binary form must reproduce the above copyright notice, this list
++ *    of conditions and the following disclaimer in the documentation and/or other materials
++ *    provided with the distribution.
++ *
++ * 3. Neither the name of the copyright holder nor the names of its contributors may be used
++ *    to endorse or promote products derived from this software without specific prior written
++ *    permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
++ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
++ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
++ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
++ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
++ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
++ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
++ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
++ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++#include "los_mpu.h"
++#include "los_config.h"
++#include "los_context.h"
++
++#if (LOSCFG_MPU_ENABLE == 1)
++
++#define SIZE_4G_BYTE        0x100000000
++#define MPU_MAX_REGION_NUM  8
++
++STATIC UINT8 g_regionNumBeUsed[MPU_MAX_REGION_NUM] = {0};
++
++typedef enum {
++    MPU_AP_FORBID_USER_FORBID = 0x0, /* Privileged:No access      Unprivileged:No access */
++    MPU_AP_RW_USER_FORBID = 0x1,     /* Privileged:Read/Write     Unprivileged:No access */
++    MPU_AP_RW_USER_RO = 0x2,         /* Privileged:Read/Write     Unprivileged:Read-only */
++    MPU_AP_RW_USER_RW = 0x3,         /* Privileged:Read/Write     Unprivileged:Read/Write */
++    MPU_AP_NA_USER_NA = 0x4,         /* Privileged:UNPREDICTABLE  Unprivileged:UNPREDICTABLE */
++    MPU_AP_RO_USER_FORBID = 0x5,     /* Privileged:Read-only      Unprivileged:No access */
++    MPU_AP_RO_USER_RO = 0x6,         /* Privileged:Read-only      Unprivileged:Read-only */
++} MpuApConfig;
++
++VOID ArchMpuEnable(UINT32 defaultRegionEnable)
++{
++    UINT32 intSave = ArchIntLock();
++    MPU->CTRL = (MPU_CTRL_ENABLE_Msk | ((defaultRegionEnable << MPU_CTRL_PRIVDEFENA_Pos) & MPU_CTRL_PRIVDEFENA_Msk));
++    SCB->SHCSR |= SCB_SHCSR_MEMFAULTENA_Msk;
++    __DSB();
++    __ISB();
++    ArchIntRestore(intSave);
++}
++VOID ArchMpuDisable(VOID)
++{
++    UINT32 intSave = ArchIntLock();
++    MPU->CTRL = 0;
++    __DSB();
++    __ISB();
++    ArchIntRestore(intSave);
++}
++
++STATIC VOID HalMpuRASRAddMemAttr(MPU_CFG_PARA *para, UINT32 *RASR)
++{
++    BOOL cachable = 0;
++    BOOL buffable = 0;
++    switch (para->memType) {
++        case MPU_MEM_ON_CHIP_ROM:
++        case MPU_MEM_ON_CHIP_RAM:
++            cachable = 1;
++            buffable = 0;
++            break;
++        case MPU_MEM_XIP_PSRAM:
++            cachable = 1;
++            buffable = 1;
++            break;
++        case MPU_MEM_XIP_NOR_FLASH:
++            cachable = 0;
++            buffable = 1;
++            break;
++        default:
++            break;
++    }
++    (*RASR) |= ((cachable << MPU_RASR_C_Pos) | (buffable << MPU_RASR_B_Pos));
++}
++
++STATIC UINT32 HalMpuEncodeSize(UINT64 size)
++{
++    UINT32 encodeSize = 0;
++    if (size > SIZE_4G_BYTE) {
++        return 0;
++    }
++    if ((size & 0x1F) != 0) { /* size should aligned to 32 byte at least. */
++        return 0;
++    }
++    size = (size >> 2);
++    while (size != 0) {
++        if (((size & 1) != 0) && ((size & 0xFFFFFFFE) != 0)) { /* size != 2^x (5 <= x <= 32)  128B - 4GB */
++            return 0;
++        }
++        size = (size >> 1);
++        encodeSize++;
++    }
++    return encodeSize;
++}
++
++STATIC UINT32 HalMpuEncodeAP(MpuAccessPermission permission)
++{
++    UINT32 ap;
++    switch (permission) {
++        case MPU_RW_BY_PRIVILEGED_ONLY:
++            ap = MPU_AP_RW_USER_FORBID;
++            break;
++        case MPU_RW_ANY:
++            ap = MPU_AP_RW_USER_RW;
++            break;
++        case MPU_RO_BY_PRIVILEGED_ONLY:
++            ap = MPU_AP_RO_USER_FORBID;
++            break;
++        case MPU_RO_ANY:
++            ap = MPU_AP_RO_USER_RO;
++            break;
++        default:
++            ap = MPU_AP_RW_USER_RW;
++            break;
++    }
++    return ap;
++}
++
++STATIC UINT32 HalMpuGetRASR(UINT32 encodeSize, MPU_CFG_PARA *para)
++{
++    UINT32 RASR;
++    UINT32 ap;
++    ap = HalMpuEncodeAP(para->permission);
++    RASR = MPU_RASR_ENABLE_Msk;
++    RASR |= ((encodeSize << MPU_RASR_SIZE_Pos) & MPU_RASR_SIZE_Msk);
++    RASR |= ((ap << MPU_RASR_AP_Pos) & MPU_RASR_AP_Msk) | ((para->executable << MPU_RASR_XN_Pos) & MPU_RASR_XN_Msk) |
++        ((para->shareability << MPU_RASR_S_Pos) & MPU_RASR_S_Msk);
++    HalMpuRASRAddMemAttr(para, &RASR);
++    return RASR;
++}
++
++UINT32 ArchMpuSetRegion(UINT32 regionId, MPU_CFG_PARA *para)
++{
++    UINT32 RASR;
++    UINT32 RBAR;
++    UINT32 RNR;
++    UINT32 encodeSize;
++    UINT32 intSave;
++    UINT64 size;
++
++    if ((regionId >= MPU_MAX_REGION_NUM) || (para == NULL)) {
++        return LOS_NOK;
++    }
++
++    if ((MPU_TYPE_DREGION_Msk & MPU->TYPE) == 0) {
++        return LOS_NOK;
++    }
++
++    RNR = regionId;
++    encodeSize = HalMpuEncodeSize(para->size);
++    if (encodeSize == 0) {
++        return LOS_NOK;
++    }
++    size = para->size - 1;              /* size aligned after encode check */
++    if ((para->baseAddr & size) != 0) { /* base addr should aligned to region size */
++        return LOS_NOK;
++    }
++    RBAR = para->baseAddr & MPU_RBAR_ADDR_Msk;
++    RASR = HalMpuGetRASR(encodeSize, para);
++    intSave = ArchIntLock();
++    if (g_regionNumBeUsed[regionId]) {
++        ArchIntRestore(intSave);
++        return LOS_NOK;
++    }
++    MPU->RNR = RNR;
++    MPU->RBAR = RBAR;
++    MPU->RASR = RASR;
++    __DSB();
++    __ISB();
++    g_regionNumBeUsed[regionId] = 1; /* Set mpu region used flag */
++    ArchIntRestore(intSave);
++    return LOS_OK;
++}
++
++UINT32 ArchMpuDisableRegion(UINT32 regionId)
++{
++    volatile UINT32 type;
++    UINT32 intSave;
++
++    if (regionId >= MPU_MAX_REGION_NUM) {
++        return LOS_NOK;
++    }
++
++    intSave = ArchIntLock();
++    if (!g_regionNumBeUsed[regionId]) {
++        ArchIntRestore(intSave);
++        return LOS_NOK;
++    }
++
++    type = MPU->TYPE;
++    if ((MPU_TYPE_DREGION_Msk & type) != 0) {
++        MPU->RNR = regionId;
++        MPU->RASR = 0;
++        __DSB();
++        __ISB();
++    }
++    g_regionNumBeUsed[regionId] = 0; /* clear mpu region used flag */
++    ArchIntRestore(intSave);
++    return LOS_OK;
++}
++
++INT32 ArchMpuUnusedRegionGet(VOID)
++{
++    INT32 id;
++    UINT32 intSave = ArchIntLock();
++    for (id = 0; id < MPU_MAX_REGION_NUM; id++) {
++        if (!g_regionNumBeUsed[id]) {
++            break;
++        }
++    }
++    ArchIntRestore(intSave);
++
++    if (id == MPU_MAX_REGION_NUM) {
++        return -1;
++    } else {
++        return id;
++    }
++}
++#endif
+diff --git a/arch/arm/cortex-m3/gcc/los_timer.c b/arch/arm/cortex-m3/gcc/los_timer.c
+new file mode 100644
+index 00000000..f60ec28e
+--- /dev/null
++++ b/arch/arm/cortex-m3/gcc/los_timer.c
+@@ -0,0 +1,128 @@
++/*
++ * Copyright (c) 2013-2019 Huawei Technologies Co., Ltd. All rights reserved.
++ * Copyright (c) 2020-2021 Huawei Device Co., Ltd. All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without modification,
++ * are permitted provided that the following conditions are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright notice, this list of
++ *    conditions and the following disclaimer.
++ *
++ * 2. Redistributions in binary form must reproduce the above copyright notice, this list
++ *    of conditions and the following disclaimer in the documentation and/or other materials
++ *    provided with the distribution.
++ *
++ * 3. Neither the name of the copyright holder nor the names of its contributors may be used
++ *    to endorse or promote products derived from this software without specific prior written
++ *    permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
++ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
++ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
++ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
++ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
++ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
++ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
++ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
++ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
++ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#include "los_timer.h"
++#include "los_config.h"
++#include "los_tick.h"
++#include "los_arch_interrupt.h"
++#include "los_debug.h"
++
++STATIC UINT32 SysTickStart(HWI_PROC_FUNC handler);
++STATIC UINT64 SysTickReload(UINT64 nextResponseTime);
++STATIC UINT64 SysTickCycleGet(UINT32 *period);
++STATIC VOID SysTickLock(VOID);
++STATIC VOID SysTickUnlock(VOID);
++
++STATIC ArchTickTimer g_archTickTimer = {
++    .freq = 0,
++    .irqNum = SysTick_IRQn,
++    .periodMax = LOSCFG_BASE_CORE_TICK_RESPONSE_MAX,
++    .init = SysTickStart,
++    .getCycle = SysTickCycleGet,
++    .reload = SysTickReload,
++    .lock = SysTickLock,
++    .unlock = SysTickUnlock,
++    .tickHandler = NULL,
++};
++
++STATIC UINT32 SysTickStart(HWI_PROC_FUNC handler)
++{
++    UINT32 ret;
++    ArchTickTimer *tick = &g_archTickTimer;
++
++    tick->freq = OS_SYS_CLOCK;
++
++#if (LOSCFG_USE_SYSTEM_DEFINED_INTERRUPT == 1)
++#if (LOSCFG_PLATFORM_HWI_WITH_ARG == 1)
++    OsSetVector(tick->irqNum, handler, NULL);
++#else
++    OsSetVector(tick->irqNum, handler);
++#endif
++#endif
++
++    ret = SysTick_Config(LOSCFG_BASE_CORE_TICK_RESPONSE_MAX);
++    if (ret == 1) {
++        return LOS_ERRNO_TICK_PER_SEC_TOO_SMALL;
++    }
++
++    return LOS_OK;
++}
++
++STATIC UINT64 SysTickReload(UINT64 nextResponseTime)
++{
++    if (nextResponseTime > g_archTickTimer.periodMax) {
++        nextResponseTime = g_archTickTimer.periodMax;
++    }
++    SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
++    SysTick->LOAD = (UINT32)(nextResponseTime - 1UL); /* set reload register */
++    SysTick->VAL = 0UL; /* Load the SysTick Counter Value */
++    SCB->ICSR |= SCB_ICSR_PENDSTCLR_Msk;
++    SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;
++    return nextResponseTime;
++}
++
++STATIC UINT64 SysTickCycleGet(UINT32 *period)
++{
++    UINT32 hwCycle = 0;
++    UINT32 intSave = LOS_IntLock();
++    UINT32 val = SysTick->VAL;
++    *period = SysTick->LOAD;
++    if (val != 0) {
++        hwCycle = *period - val;
++    }
++    LOS_IntRestore(intSave);
++    return (UINT64)hwCycle;
++}
++
++STATIC VOID SysTickLock(VOID)
++{
++    SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
++}
++
++STATIC VOID SysTickUnlock(VOID)
++{
++    SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;
++}
++
++ArchTickTimer *ArchSysTickTimerGet(VOID)
++{
++    return &g_archTickTimer;
++}
++
++UINT32 ArchEnterSleep(VOID)
++{
++    __DSB();
++    __WFI();
++    __ISB();
++
++    return LOS_OK;
++}
++

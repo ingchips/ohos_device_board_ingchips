@@ -1,4 +1,4 @@
-# Copyright (c) 2025 INGCHIPS.
+# Copyright (c) 2021 INGCHIPS.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -16,11 +16,14 @@ if (ohos_kernel_type == "liteos_m") {
   module_name = get_path_info(rebase_path("."), "name")
   module_group(module_name) {
     modules = [
-     
       "hal_liteos",
       "system",
-      "hcs",
     ]
+    if (defined(LOSCFG_DRIVERS)) {
+      modules += [
+        "hcs",
+      ]
+    }
     if (defined(LOSCFG_SOC_SERIES_ING916)) {
     modules += [
     "ing916",
@@ -34,6 +37,16 @@ if (ohos_kernel_type == "liteos_m") {
   if (defined(LOSCFG_SOC_SERIES_ING9188)){
   modules += [
     "ing9188",
+    ]
+    }
+  if (defined(LOSCFG_SOC_ING208)){
+  modules += [
+    "ing208",
+    ]
+    }
+  if (defined(LOSCFG_SOC_ING208_ROM)){
+  modules += [
+    "ing208_rom",
     ]
     }
     }

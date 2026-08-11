@@ -24,14 +24,21 @@ config("public") {
        
     #xtspart1
     if (test_step == "part1") {
+    cflags += [
+         "-DCONFIG_I2C_SUPPORT=1",
+         "-DCONFIG_PWM_SUPPORT=1",
+    ]
     ldflags += [
         "-ldevattest_sdk",
         "-ldevattest_core",
         "-lcjson_static",  
-        "-lhal_token_static",
-       "-lhal_sysparam",
-       "-lmodule_ActsBootstrapTest",#成功
-       "-lmodule_ActsParameterTest",#成功 
+         "-lhal_token_static",
+         "-lhal_sysparam",
+         "-lmodule_ActsBootstrapTest",#成功
+      #  "-lmodule_ActsParameterTest",#成功 
+         "-lmodule_ActsDeviceAttestTest",#成功 
+
+         "-lmodule_ActsWifiIotTest",#成功
     ]
     }       
 
@@ -57,7 +64,6 @@ config("public") {
     ]
     }
 
-    
     ####xtspart4       
     else if (test_step == "part4"){
     cflags += ["-UINTER_ATTEST_MINI_MODULE"]
@@ -67,8 +73,7 @@ config("public") {
        "-lmodule_ActsHieventLiteTest",#成功
        ]
     }
-
-       
+     
     ####xtspart5 make menuconfig在kernel中开文件系统及flash驱动
     else if (test_step == "part5") {
     cflags += ["-UINTER_ATTEST_MINI_MODULE"]

@@ -17,7 +17,7 @@ config("public") {
   include_dirs = [ "." ]
 }
 
-kernel_module("platform_system") {
+kernel_module("system") {
   sources = [
     "dprintf.c",
     "system.c",

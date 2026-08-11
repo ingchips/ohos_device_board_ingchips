@@ -1,0 +1,15 @@
+diff --git a/ohos/packages/kernel_permission.py b/ohos/packages/kernel_permission.py
+index 78f9cca3..152b40d9 100755
+--- a/ohos/packages/kernel_permission.py
++++ b/ohos/packages/kernel_permission.py
+@@ -62,7 +62,9 @@ class KernelPermission():
+         try:
+             llvm_tool = KernelPermission.regist_llvm_objcopy_path(root_path)
+         except FileNotFoundError as e:
+-            print("regist_llvm_objcopy_path failed:{}".format(e))        
++            print("regist_llvm_objcopy_path failed:{}".format(e))
++            # 6.1 适配: mini/liteos_m 系统使用 gcc 工具链，无 llvm-objcopy 时跳过 kernel permission 处理
++            return
+         file_list = KernelPermission.scan_file(out_path)
+         
+         cmds = KernelPermission.gen_cmds(file_list, out_path, llvm_tool)

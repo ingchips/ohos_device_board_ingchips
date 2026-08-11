@@ -279,7 +279,7 @@ boolean HilogProc_Impl(const HiLogContent *hilogContent, uint32 len)
     }
     return TRUE;
 }
-extern char __HeapBase, __HeapLimit;
+//extern char __HeapBase, __HeapLimit;
 
 void mainTask(void) {
     // Avoiding HCTEST being called before real LiteParamService
@@ -290,11 +290,6 @@ void mainTask(void) {
     OHOS_SystemInit();
     /* register hilog output func for mini */
     HiviewRegisterHilogProc(HilogProc_Impl);
-   while(1)
-   {
-       osDelay(1000);
-       printf("t\r\n");
-   }
     return NULL;
 }
 UINT32 tid;
@@ -304,7 +299,7 @@ void MainTaskInit(VOID)
     task_init_param.usTaskPrio = 2; 
     task_init_param.pcName = "mainTask"; 
     task_init_param.pfnTaskEntry = (TSK_ENTRY_FUNC)mainTask;
-    task_init_param.uwStackSize = 4096;        
+    task_init_param.uwStackSize = 6144;        
     LOS_TaskCreate(&tid, &task_init_param);  
 }
 
@@ -314,16 +309,14 @@ const gen_os_driver_t *os_impl_get_driver(void)
 	extern char __HeapLimit;
 	printf("Heap starts at: %p\n", &__end__);
 	printf("Heap ends at: %p\n", &__HeapLimit);
-	void *ptr = malloc(4);
-	printf("Allocated memory: %p\n", ptr);	
 	//ptr = ll_malloc(0x9000);
 	//printf("Allocated ll mem: %p\n", ptr);	
     //LOS_KernelInit initializes the NVIC Settings. we don't want to do that.
     LOS_KernelInit();	
     OsSysTickTimerInit(LOSCFG_BASE_CORE_TICK_RESPONSE_MAX);
-    // RunTaskSample();
+    RunTaskSample();
     MainTaskInit();
-    // OHOS_SystemInit();
+    //OHOS_SystemInit();
 #ifdef LOSCFG_KERNEL_LOWPOWER
     LOS_PmRegister(LOS_PM_TYPE_TICK_TIMER, &gs_PmTickSt);
     LOS_PmRegister(LOS_PM_TYPE_SYSCTRL, &gs_PmSysctrlSt);
@@ -360,6 +353,8 @@ const gen_os_driver_t *os_impl_get_driver(void)
 #define STOPPED_TIMER_COMPENSATION          (MISSED_COUNTS_FACTOR / ( SYSCTRL_GetPLLClk() / RTC_CLK_FREQ ))
 #elif(INGCHIPS_FAMILY == INGCHIPS_FAMILY_918)
 #define STOPPED_TIMER_COMPENSATION          (MISSED_COUNTS_FACTOR / ( PLL_CLK_FREQ / RTC_CLK_FREQ ))
+#elif(INGCHIPS_FAMILY == INGCHIPS_FAMILY_20)
+#define STOPPED_TIMER_COMPENSATION          (MISSED_COUNTS_FACTOR / ( SYSCTRL_GetPLLClk() / RTC_CLK_FREQ ))
 #else
 #error "unknown chip"
 #endif
