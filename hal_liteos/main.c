@@ -189,7 +189,7 @@ uintptr_t app_main()
     // setup event handlers
     platform_set_evt_callback_table(&evt_cb_table);
     setup_peripherals();
-    platform_printf("build@%s\r\n",__TIME__);
+    printf("build@%s\r\n",__TIME__);
     printf("build@%d\r\n",__LINE__);
 
     //trace_uart_init(&trace_ctx);
