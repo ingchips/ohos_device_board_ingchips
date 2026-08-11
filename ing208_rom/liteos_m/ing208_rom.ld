@@ -8,8 +8,10 @@
 MEMORY
 {
   FLASH (rx) : ORIGIN = 0x2004000, LENGTH = 364544
-   DRAM (rwx) : ORIGIN = 0x200056D0, LENGTH = 0x2800
-  RAM (rwx) : ORIGIN = 0x20007ED0, LENGTH = 0x2130
+  /* 协议栈内部 FreeRTOS 堆（rom 版），直接作为 liteos 系统堆（size 需 8 对齐，向下取 0x4400） */
+  FREERTOS_HEAP (rwx) : ORIGIN = 0x200007E0, LENGTH = 0x4400
+  /* 原 DRAM(liteos 堆)区已并入 RAM：.data/.bss/.heap/栈 从 0x200056D0 到 0x2000A000(40K 顶) */
+  RAM (rwx) : ORIGIN = 0x200056D0, LENGTH = 0x4930
 }
 
 /* Linker script to place sections and symbol values. Should be used together
@@ -257,11 +259,11 @@ SECTIONS
 
 	} > RAM
 
-	.osheap :
+	.osheap (NOLOAD) :
 	{
-	  __los_heap_addr_start__ = .;
-	  __los_heap_addr_end__ = ORIGIN(DRAM) + LENGTH(DRAM) -1;
-	} > DRAM
+	  __los_heap_addr_start__ = ORIGIN(FREERTOS_HEAP);
+	  __los_heap_addr_end__ = ORIGIN(FREERTOS_HEAP) + LENGTH(FREERTOS_HEAP) - 1;
+	} > FREERTOS_HEAP
 
 	.bss2 :
 	{
@@ -298,7 +300,9 @@ SECTIONS
 		__end__ = .;
 		PROVIDE(end = .);
 		 *(.heap*) 
- 		__HeapLimit = .;
+		/* newlib sbrk 堆固定 2K，其余 RAM 段空间留给应用(任务栈/静态区) */
+		. = . + 0x800;
+		__HeapLimit = .;
 	} > RAM
 
 	/* .stack_dummy section doesn't contains any symbols. It is only
