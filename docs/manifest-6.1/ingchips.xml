@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <remote fetch="https://github.com/ingchips/" name="ingchips" />
+  <include name="ohos/ohos.xml" />
+  <!-- ingchips 设备适配仓（6.1）：
+       device/soc、device/board、vendor 由 ingchips_openharmony_device 拆分同步；
+       sdk 由 ING918XX_SDK_SOURCE 单独拉取 -->
+  <project name="ohos_device_soc_ingchips" path="device/soc/ingchips"
+           groups="default,ohos:mini,ohos:chipset" remote="ingchips" revision="master" />
+  <project name="ohos_device_board_ingchips" path="device/board/ingchips"
+           groups="default,ohos:mini,ohos:chipset" remote="ingchips" revision="master" />
+  <project name="ohos_vendor_ingchips" path="vendor/ingchips"
+           groups="default,ohos:mini,ohos:chipset" remote="ingchips" revision="master" />
+  <project name="ING918XX_SDK_SOURCE" path="device/soc/ingchips/sdk"
+           groups="default,ohos:mini,ohos:chipset" remote="ingchips" revision="master" />
+</manifest>
