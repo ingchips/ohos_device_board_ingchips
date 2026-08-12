@@ -63,7 +63,7 @@ VOID TaskSample(VOID)
     TSK_INIT_PARAM_S stTask = {0};
 
     stTask.pfnTaskEntry = (TSK_ENTRY_FUNC)TaskSampleEntry1;
-    stTask.uwStackSize = 4096;
+    stTask.uwStackSize = 1024;
     stTask.pcName = "TaskSampleEntry1";
     stTask.usTaskPrio = 8; /* Os task priority is 6 */
     uwRet = LOS_TaskCreate(&taskID1, &stTask);
