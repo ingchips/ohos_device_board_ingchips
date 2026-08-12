@@ -16,22 +16,22 @@ config("public") {
     ldflags = [
         "-Wl,-T" + rebase_path("ing9188.ld"),
         "-Wl,--whole-archive",
-        "-lbootstrap",
-        "-lbroadcast",
-        "-lhctest",
+        #"-lbootstrap",
+        #"-lbroadcast",
+        #"-lhctest",
        # "-lapp_hello",
        ]
        
     #xtspart1
     if (test_step == "part1") {
     ldflags += [
-        "-ldevattest_sdk",
-        "-ldevattest_core",
-        "-lcjson_static",  
+        #"-ldevattest_sdk",
+        #"-ldevattest_core",
+        #"-lcjson_static",  
         "-lhal_token_static",
        "-lhal_sysparam",
-       "-lmodule_ActsBootstrapTest",#成功
-       "-lmodule_ActsParameterTest",#成功 
+       #"-lmodule_ActsBootstrapTest",#成功
+       #"-lmodule_ActsParameterTest",#成功 
     ]
     }       
 
@@ -43,7 +43,7 @@ config("public") {
     "-UINTER_ATTEST_MINI_MODULE",
     ]
     ldflags += [
-       "-lmodule_ActsSamgrTest",
+       #"-lmodule_ActsSamgrTest",
       ]
     }
      
@@ -52,8 +52,8 @@ config("public") {
     else if (test_step == "part3"){
     cflags += ["-UINTER_ATTEST_MINI_MODULE"]
     ldflags += [
-       "-lhuks_test_common",#pass
-       "-lmodule_ActsHuksHalFunctionTest",#pass
+       #"-lhuks_test_common",#pass
+       #"-lmodule_ActsHuksHalFunctionTest",#pass
     ]
     }
 
@@ -62,9 +62,9 @@ config("public") {
     else if (test_step == "part4"){
     cflags += ["-UINTER_ATTEST_MINI_MODULE"]
     ldflags += [
-       "-lmodule_ActsDfxFuncTest",#成功
-       "-lmodule_ActsUpdaterFuncTest",#成功
-       "-lmodule_ActsHieventLiteTest",#成功
+       #"-lmodule_ActsDfxFuncTest",#成功
+       #"-lmodule_ActsUpdaterFuncTest",#成功
+       #"-lmodule_ActsHieventLiteTest",#成功
        ]
     }
 
@@ -73,7 +73,7 @@ config("public") {
     else if (test_step == "part5") {
     cflags += ["-UINTER_ATTEST_MINI_MODULE"]
     ldflags += [
-       "-lmodule_ActsUtilsFileTest",#外挂flash成功
+       #"-lmodule_ActsUtilsFileTest",#外挂flash成功
     ]
     }
 
